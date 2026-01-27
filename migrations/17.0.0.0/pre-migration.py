@@ -1,7 +1,7 @@
 from odoo.upgrade import util
 
 def migrate(cr, version):
-  
+
     cr.execute("""
         INSERT INTO ir_config_parameter (key, value, create_date, write_date)
         VALUES ('quemen.pre17_migration_ran', now()::text, now(), now())
@@ -15,9 +15,32 @@ def migrate(cr, version):
     util.create_column(cr, "pos_order", "l10n_mx_edi_cfdi_uuid", "varchar")
     util.create_column(cr, "pos_order", "l10n_mx_edi_is_cfdi_needed", "bool")
     util.create_column(cr, "pos_order", "l10n_mx_edi_cfdi_to_public", "bool")
+    # config_id (stored compute nuevo)
+    util.create_column(cr, "pos_order", "config_id", "int4")
 
     # stored con default
     util.create_column(cr, "pos_order", "l10n_mx_edi_usage", "varchar", default="G03")
+
+    # Primero: usar el campo legacy que ya existe en tu BD
+    util.explode_execute(cr, """
+        UPDATE pos_order
+          SET config_id = x_config_id_stored
+        WHERE config_id IS NULL
+          AND x_config_id_stored IS NOT NULL
+    """)
+
+    # Fallback: por sesión
+    util.explode_execute(cr, """
+        UPDATE pos_order p
+          SET config_id = s.config_id
+          FROM pos_session s
+        WHERE p.config_id IS NULL
+          AND p.session_id = s.id
+          AND s.config_id IS NOT NULL
+    """)
+
+
+
 
     # 2) Poblar l10n_mx_edi_usage desde account_move (tu v15 sí lo tiene)
     util.explode_execute(cr, """
