@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_cbarra_lotet_wizard(models.TransientModel):
     _name = 'quemen.reporte_cbarra_lotet.wizard'
+    _description = " "
 
     def _domain_product_ids(self):
         domain = []

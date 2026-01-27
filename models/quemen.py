@@ -9,15 +9,17 @@ from odoo.tools import float_compare
 
 class QuemenStockMoveLine(models.Model):
     _name = "quemen.stock_move_line"
+    _description = " . "
 
     picking_id = fields.Many2one("stock.picking", "Picking")
     product_id = fields.Many2one("product.product", "Producto")
-    lote_id = fields.Many2one("stock.production.lot", "Lote")
+    lote_id = fields.Many2one("stock.lot", "Lote")
     cantidad = fields.Float("Cantidad")
     qty_label = fields.Float("Cantidad etiqueta")
 
 class QuemenPromociones(models.Model):
     _name = "quemen.promociones"
+    _description = " . "
 
     name = fields.Char("Nombre")
     fecha_inicio = fields.Datetime("Fecha inicio")
@@ -27,6 +29,7 @@ class QuemenPromociones(models.Model):
 
 class QuemenPromocionesCombos(models.Model):
     _name = "quemen.promociones_combos"
+    _description = " . "
 
     promocion_id = fields.Many2one('quemen.promociones','Promocion')
     producto_id = fields.Many2one('product.product','Producto')
@@ -36,6 +39,7 @@ class QuemenPromocionesCombos(models.Model):
 
 class QuemenPromocionesDosporUno(models.Model):
     _name = "quemen.promociones_dosporuno"
+    _description = " . "
 
     promocion_id = fields.Many2one('quemen.promociones','Promocion')
     producto_id = fields.Many2one('product.product','Producto')
@@ -50,7 +54,7 @@ class QuemenRelojChecador(models.Model):
     ac = fields.Char('AC.No')
     empleado_id = fields.Many2one('hr.employee','Empleado')
     departamento_id = fields.Many2one('hr.department','Departamento')
-    area_id = fields.Many2one('hr.area','Area')
+    area_id = fields.Many2one('stock.lot','Area')
     puesto_id = fields.Many2one('hr.job','Puesto')
     dia = fields.Selection([
         ('lunes', 'Lunes'),
@@ -110,7 +114,7 @@ class QuemenRetirosEfectivo(models.Model):
     state = fields.Selection(
     [('borrador', 'Borrador'), ('confirmado', 'Confirmado')],
     'Estado', readonly=True, copy=False, default= "borrador")
-    cajero = fields.Char('Cajero', required=True)
+    cajero = fields.Char('Cajero', required=True, default=lambda self: self.env.user.name)
     entregado = fields.Boolean('Entregado', readonly=True)
     ultimo_retiro = fields.Boolean("último retiro")
 
@@ -121,8 +125,7 @@ class QuemenRetirosEfectivo(models.Model):
             if vals.get('name', _('New')) == _('New'):
                 seq_date = None
                 if 'company_id' in vals:
-                    vals['name'] = self.env['ir.sequence'].with_context(force_company=vals['company_id']).next_by_code(
-                        'quemen.retiros', sequence_date=seq_date) or _('New')
+                    vals['name'] = self.env['ir.sequence'].next_by_code('quemen.op_lote', sequence_date=seq_date) or _('New')
                 else:
                     vals['name'] = secuencia_id._next() or _('New')
         result = super(QuemenRetirosEfectivo, self).create(vals_list)
@@ -139,6 +142,7 @@ class QuemenRetirosEfectivo(models.Model):
 
 class QuemenRetiros(models.Model):
     _name = "quemen.retiro_denominacion"
+    _description = " . "
 
     retiro_id = fields.Many2one('quemen.retiros_efectivo','Retiro')
     denominacion_id = fields.Many2one('pos.bill','Denominacion')
@@ -171,7 +175,8 @@ class QuemenRetiros(models.Model):
 
 class QuemenOpLote(models.Model):
     _name = "quemen.op_lote"
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'utm.mixin']
+    _description = " . "
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char('Nombre', required=True, copy=False, readonly=True, index=True, default=lambda self: _('New'), tracking=True)
     date = fields.Date('Fecha', tracking=True)
@@ -205,7 +210,7 @@ class QuemenOpLote(models.Model):
                         removal_date = elaboration_date + timedelta(days=line.product_id.removal_time)
                         use_date = elaboration_date + timedelta(days=line.product_id.use_time)
                         alert_date = elaboration_date + timedelta(days=line.product_id.alert_time)
-                        lot_id = self.env['stock.production.lot'].create({'product_id': line.product_id.id,
+                        lot_id = self.env['stock.lot'].create({'product_id': line.product_id.id,
                                                                           'elaboration_date': elaboration_date,
                                                                           'expiration_date': expiration_date,
                                                                           'removal_date': removal_date,
@@ -268,18 +273,19 @@ class QuemenOpLote(models.Model):
 
 class QuemenOpLoteLinea(models.Model):
     _name = "quemen.op_lote_line"
+    _description = " . "
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = "product_id"
 
     lot_id = fields.Many2one("quemen.op_lote", "Lote")
-    product_id = fields.Many2one('product.product','Producto',tracking=True)
-    quantity = fields.Float('Cantidad',tracking=True)
-    elaboration_date = fields.Date('Fecha elaboracion',tracking=True)
+    product_id = fields.Many2one('product.product', 'Producto', tracking=True)
+    quantity = fields.Float('Cantidad', tracking=True)
+    elaboration_date = fields.Date('Fecha elaboracion', tracking=True)
     qty_label = fields.Float('Cantidad etiquetas', default=1)
-    lot_barcode_id = fields.Many2one('stock.production.lot', 'Lote',tracking=True)
-    lot_state = fields.Selection(
-        [('borrador', 'Borrador'), ('confirmado', 'Confirmado')],
-        'Estado', readonly=True, copy=False, related='lot_id.state')
-    # wizard_id = fields.Many2one('quemen.reporte_codigo_barras.wizard', 'Wizard')
+    lot_barcode_id = fields.Many2one('stock.lot', 'Lote código de barras', tracking=True)
+
+    # FIX: related -> no selection. Hereda el selection del campo origen (lot_id.state)
+    lot_state = fields.Selection(related='lot_id.state', string='Estado', store=True, readonly=True)
 
     @api.onchange('quantity')
     def _onchange_quantity(self):
@@ -288,16 +294,15 @@ class QuemenOpLoteLinea(models.Model):
 
 class QuemenPlanning(models.Model):
     _name = "quemen.planning"
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'utm.mixin']
+    _description = " . "
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char('Nombre', required=True, copy=False, readonly=True, index=True, default=lambda self: _('New'), tracking=True)
     date = fields.Date('Fecha', tracking=True)
     planning_date = fields.Date('Fecha planificada', tracking=True)
     product_ids = fields.One2many('quemen.planning_line', 'planning_id', string="Productos", tracking=True)
     reference = fields.Char('Referencia', tracking=True)
-    state = fields.Selection(
-        [('borrador', 'Borrador'), ('confirmado', 'Confirmado')],
-        'Estado', readonly=True, copy=False, default='borrador', tracking=True)
+    state = fields.Selection('Estado', readonly=True, copy=False, default='borrador', tracking=True)
 
     @api.model
     def create(self, vals):
@@ -430,22 +435,25 @@ class QuemenPlanning(models.Model):
 
 class QuemenPlanningLine(models.Model):
     _name = "quemen.planning_line"
+    _description = " . "
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = "product_id"
 
     planning_id = fields.Many2one("quemen.planning", "Planeacion")
-    product_id = fields.Many2one('product.product','Producto',tracking=True)
-    subproduct_id = fields.Many2one('product.product','Componente',tracking=True)
-    subproduct1_id = fields.Many2one('product.product','Componente1',tracking=True)
-    subproduct2_id = fields.Many2one('product.product','Componente2',tracking=True)
-    subproduct3_id = fields.Many2one('product.product','Componente3',tracking=True)
-    subproduct4_id = fields.Many2one('product.product','Componente4',tracking=True)
-    qty_production = fields.Float('Producción',tracking=True)
-    qty_stock = fields.Float('Existencia',tracking=True)
-    qty = fields.Float('Cantidad',tracking=True)
+    product_id = fields.Many2one('product.product', 'Producto', tracking=True)
+    subproduct_id = fields.Many2one('product.product', 'Componente', tracking=True)
+    subproduct1_id = fields.Many2one('product.product', 'Componente1', tracking=True)
+    subproduct2_id = fields.Many2one('product.product', 'Componente2', tracking=True)
+    subproduct3_id = fields.Many2one('product.product', 'Componente3', tracking=True)
+    subproduct4_id = fields.Many2one('product.product', 'Componente4', tracking=True)
+    qty_production = fields.Float('Producción', tracking=True)
+    qty_stock = fields.Float('Existencia', tracking=True)
+    qty = fields.Float('Cantidad', tracking=True)
     parent_line_id = fields.Many2one("quemen.planning_line", "Linea padre")
-    line_state = fields.Selection(
-        [('borrador', 'Borrador'), ('confirmado', 'Confirmado')],
-        'Estado', readonly=True, copy=False, related='planning_id.state')
+
+    # FIX: related -> no selection. Hereda el selection del campo origen (planning_id.state)
+    line_state = fields.Selection(related='planning_id.state', string='Estado', store=True, readonly=True)
+
     area = fields.Char("Area")
 
     # @api.onchange('product_id')

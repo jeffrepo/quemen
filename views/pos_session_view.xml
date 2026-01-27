@@ -11,7 +11,7 @@
         <group>
             <field name="pendiente_facturar"/>
             <field name="factura_global_id"/>
-              <field name="cash_register_total_entry_encoding"/>
+              <!-- <field name="cash_register_total_entry_encoding"/> -->
               <field name="saldo_apartura"/>
               <field name="total_efectivo_caja"/>
               <field name="pagos_efectivo"/>

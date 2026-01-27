@@ -2,35 +2,41 @@
 <odoo>
     <data>
 
+        <!-- WIZARD VIEW -->
         <record id="view_quemen_existencias_wizard" model="ir.ui.view">
-              <field name="name">view.quemen.existencias.wizard.</field>
-              <field name="model">quemen.reporte_existencias.wizard</field>
-              <field name="arch" type="xml">
+            <field name="name">view.quemen.existencias.wizard</field>
+            <field name="model">quemen.reporte_existencias.wizard</field>
+            <field name="arch" type="xml">
                 <form string="Reporte de existencias">
-                  <group>
-                    <field name="tienda_id"/>
-                  </group>
-                    <!-- <group>
-                        <field name="fecha_vencimiento"/>
-                    </group> -->
+                    <group>
+                        <field name="tienda_id"/>
+                    </group>
                     <footer>
-                        <!-- <button name="print_report" string="Print"  type="object" class="btn-primary"/> -->
                         <button name="print_report" string="Generar reporte" type="object" class="oe_highlight"/>
-                        <button string="Cancel" class="btn-default" special="cancel" />
+                        <button string="Cancel" class="btn-default" special="cancel"/>
                     </footer>
                 </form>
-              </field>
+            </field>
         </record>
 
+        <!-- ACTION (FORMA RECOMENDADA) -->
+        <record id="quemen_action_reporte_existencias" model="ir.actions.act_window">
+            <field name="name">Reporte de existencias</field>
+            <field name="res_model">quemen.reporte_existencias.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
 
-        <act_window id="quemen_action_reporte_existencias"
+            <!-- Si lo quieres “bind” a pos.session -->
+            <field name="binding_model_id" ref="point_of_sale.model_pos_session"/>
+        </record>
+
+        <!-- MENU -->
+        <menuitem
+            id="menu_existencias"
             name="Reporte de existencias"
-            binding_model="pos.session"
-            res_model="quemen.reporte_existencias.wizard"
-            view_mode="form" target="new"/>
-
-            <menuitem action="quemen_action_reporte_existencias" id="menu_existencias" parent="quemen.menu_quemen_reporte_tiendas"/>
-
+            parent="quemen.menu_quemen_reporte_tiendas"
+            action="quemen.quemen_action_reporte_existencias"
+        />
 
     </data>
 </odoo>

@@ -15,7 +15,7 @@ import pytz
 
 class ReportFormatoSalidas(models.AbstractModel):
     _name = 'report.quemen.reporte_formato_salidas'
-
+    _description = " "
 
     def verificar_productos_vencidos(self):
         logging.warn('verificar para albaran')

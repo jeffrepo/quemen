@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class quemen_reporte_retiros_sesion(models.TransientModel):
     _name = 'quemen.reporte_retiros_sesion.wizard'
+    _description = " "
 
     def ultimo_retiro(self):
         sesiones = self.env['pos.session'].search([('config_id', '=' ,self.env.user.pos_id.id)])

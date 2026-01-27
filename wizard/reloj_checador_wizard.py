@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError, UserError, Warning
+from odoo.exceptions import ValidationError, UserError
 import time
 import base64
 import xlwt
@@ -26,6 +26,7 @@ import base64
 
 class QuemenRelojChecadorWizard(models.TransientModel):
     _name = 'quemen.reloj_checador.wizard'
+    _description = " . "
 
     archivo = fields.Binary('Archivo excel')
 

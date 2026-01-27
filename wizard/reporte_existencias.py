@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_existencias_wizard(models.TransientModel):
     _name = 'quemen.reporte_existencias.wizard'
+    _description = " "
 
     def _tienda_actual(self):
         tienda = False

@@ -1,39 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-      <!-- Menu padre -->
-      <menuitem
-        id="quemen_menu_item_informes"
-        name="Informes Quemen"
-        parent="point_of_sale.menu_point_root"
-        sequence="140"/>
+  <data>
+    <!-- Menu padre -->
+    <menuitem
+      id="quemen_menu_item_informes"
+      name="Informes Quemen"
+      parent="point_of_sale.menu_point_root"
+      sequence="140"
+    />
 
-      <!-- menus hijos  -->
-      <menuitem
-        action="quemen_action_reporte_entrega_valores"
-        id="menu_entrega_valores"
-        parent="quemen_menu_item_informes"/>
+    <!-- Menus hijos -->
+    <menuitem
+      id="menu_entrega_valores"
+      name="Entrega de valores"
+      parent="quemen_menu_item_informes"
+      action="quemen_action_reporte_entrega_valores"
+      sequence="10"
+    />
 
-      <menuitem
-        action="quemen_action_reporte_productos_labor_venta"
-        id="menu_productos_labor_venta"
-        parent="quemen_menu_item_informes"/>
+    <menuitem
+      id="menu_productos_labor_venta"
+      name="Productos labor de venta"
+      parent="quemen_menu_item_informes"
+      action="quemen_action_reporte_productos_labor_venta"
+      sequence="20"
+    />
 
-      <menuitem
-        action="quemen_action_reporte_salidas"
-        id="menu_salidas"
-        parent="quemen_menu_item_informes"/>
+    <menuitem
+      id="menu_salidas"
+      name="Salidas"
+      parent="quemen_menu_item_informes"
+      action="quemen_action_reporte_salidas"
+      sequence="30"
+    />
 
-      <menuitem
-        action="quemen_action_reporte_existencias"
-        id="menu_existencias"
-        parent="quemen_menu_item_informes"/>
+    <menuitem
+      id="menu_existencias"
+      name="Existencias"
+      parent="quemen_menu_item_informes"
+      action="quemen_action_reporte_existencias"
+      sequence="40"
+    />
 
-      <menuitem
-        action="quemen_action_reporte_formato_salidas"
-        id="menu_formato_salidas"
-        parent="quemen_menu_item_informes"/>
+    <menuitem
+      id="menu_formato_salidas"
+      name="Formato salidas"
+      parent="quemen_menu_item_informes"
+      action="quemen_action_reporte_formato_salidas"
+      sequence="50"
+    />
 
-
-    </data>
+  </data>
 </odoo>

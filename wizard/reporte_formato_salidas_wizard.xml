@@ -3,9 +3,9 @@
     <data>
 
         <record id="view_quemen_formato_salidas_wizard" model="ir.ui.view">
-              <field name="name">view.quemen.formato_salidas.wizard.</field>
-              <field name="model">quemen.reporte_formato_salidas.wizard</field>
-              <field name="arch" type="xml">
+            <field name="name">view.quemen.formato_salidas.wizard</field>
+            <field name="model">quemen.reporte_formato_salidas.wizard</field>
+            <field name="arch" type="xml">
                 <form string="Reporte de existencias">
                     <group>
                         <field name="tienda_id"/>
@@ -13,29 +13,29 @@
                         <field name="fecha_hasta"/>
                     </group>
                     <footer>
-                        <!-- <button name="print_report" string="Print"  type="object" class="btn-primary"/> -->
                         <button name="print_report" string="Generar reporte" type="object" class="oe_highlight"/>
-                        <button string="Cancel" class="btn-default" special="cancel" />
+                        <button string="Cancel" class="btn-default" special="cancel"/>
                     </footer>
                 </form>
-              </field>
+            </field>
         </record>
 
+        <!-- ACTION (Odoo 19): definirlo como ir.actions.act_window -->
+        <record id="quemen_action_reporte_formato_salidas" model="ir.actions.act_window">
+            <field name="name">Reporte de formato de salidas</field>
+            <field name="res_model">quemen.reporte_formato_salidas.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
 
+            <!-- binding correcto en Odoo 19 -->
+            <field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+            <field name="binding_view_types">form</field>
+        </record>
 
-        <act_window id="quemen_action_reporte_formato_salidas"
-            name="Reporte de formato de salidas"
-            res_model="quemen.reporte_formato_salidas.wizard"
-            binding_model="pos.order"
-            view_mode="form" target="new"/>
-
-            <!-- <act_window id="window_planilla" name="Planilla" res_model="hr_gt.planilla.wizard" src_model="account.journal" view_mode="form" target="new"/> -->
-
-
-            <!-- <report id="action_planilla" model="hr_gt.planilla.wizard" string="Planilla" report_type="qweb-pdf" name="l10n_gt_extra.reporte_compras" file="l10n_gt_extra.reporte_compras"/> -->
-            <menuitem action="quemen_action_reporte_formato_salidas" id="menu_formato_salidas" parent="point_of_sale.menu_point_rep"/>
-            <!-- <report id="action_reporte_productos_labor_venta" model="point_of_sale.menu_point_rep" string="Reporte de productos para labor de venta" report_type="qweb-pdf" name="quemen.reporte_productos_labor_venta" file="quemen.reporte_productos_labor_venta" paperformat="paperformat_ticket"/> -->
-
+        <!-- MENU -->
+        <menuitem id="menu_formato_salidas"
+                  parent="point_of_sale.menu_point_rep"
+                  action="quemen_action_reporte_formato_salidas"/>
 
     </data>
 </odoo>

@@ -15,6 +15,7 @@ import pytz
 
 class ReportProductosLaborVenta(models.AbstractModel):
     _name = 'report.quemen.reporte_productos_labor_venta'
+    _description = " "
 
     def productos_vencimiento(self, tienda_id):
         logging.warning('tienda')

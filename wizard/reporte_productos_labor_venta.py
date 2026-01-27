@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_productos_labor_venta_wizard(models.TransientModel):
     _name = 'quemen.reporte_productos_labor_venta.wizard'
+    _description = " "
 
     def _tienda_actual(self):
         tienda = False

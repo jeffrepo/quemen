@@ -15,6 +15,7 @@ import pytz
 
 class ReporteRetiros(models.AbstractModel):
     _name = 'report.quemen.reporte_retiros_sesion'
+    _description = " "
 
     def _get_entrega_valores(self, retiro_id):
         #punto_venta

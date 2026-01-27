@@ -1,108 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-        <record model="ir.ui.view" id="quemen_view_picking_form">
-            <field name="name">quemen.stock.picking.form</field>
-            <field name="model">stock.picking</field>
-            <field name="inherit_id" ref="stock.view_picking_form"/>
-            <field name="arch" type="xml">
-                <field name="is_locked" position="after">
-                    <field name="generar_nuevos_lotes" invisible="1"/>
-                </field>
-                <field name="origin" position="after">
-                    <field name="dia_congelamiento"/>
-                </field>
-                <page name="detailed_operations" position="before">
-                    <page string="Productos" name="productos" attrs="{'invisible': [('generar_nuevos_lotes', '=', False)]}">
-                        <field name="producto_ids" mode="tree">
-                            <tree editable="bottom">
-                                <field name="product_id"/>
-                                <field name="lote_id" domain="[('product_id','=',product_id)]"/>
-                                <field name="cantidad"/>
-                            </tree>
-                        </field>
-                    </page>
+    <!-- STOCK PICKING FORM -->
+    <record model="ir.ui.view" id="quemen_view_picking_form">
+        <field name="name">quemen.stock.picking.form</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+
+            <field name="is_locked" position="after">
+                <field name="generar_nuevos_lotes" invisible="1"/>
+            </field>
+
+            <field name="origin" position="after">
+                <field name="dia_congelamiento"/>
+            </field>
+
+            <page name="extra" position="before">
+                <!-- Odoo 19: sin attrs/states. Usa invisible="" -->
+                <page string="Productos" name="productos" invisible="not generar_nuevos_lotes">
+                    <field name="producto_ids" mode="list">
+                        <list editable="bottom">
+                            <field name="product_id"/>
+                            <field name="lote_id" domain="[('product_id','=',product_id)]"/>
+                            <field name="cantidad"/>
+                        </list>
+                    </field>
                 </page>
+            </page>
+
+        </field>
+    </record>
+
+    <!-- PICKING TYPE FORM -->
+    <record model="ir.ui.view" id="quemen_view_picking_type_form">
+        <field name="name">Quemen Operation Types</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_form"/>
+        <field name="arch" type="xml">
+            <field name="warehouse_id" position="after">
+                <group string="Quemen extras">
+                    <field name="tipo_operacion_caducidad_id"/>
+                    <field name="tipo_operacion_porcion_id"/>
+                    <field name="picking_partner_id"/>
+                    <field name="tipo_transporte"/>
+                    <field name="salida_traspaso"/>
+                    <field name="generar_nuevos_lotes"/>
+                    <field name="bloqueo_traspaso"/>
+                    <field name="generar_nuevos_lotes_tiendas"/>
+                </group>
             </field>
-        </record>
+        </field>
+    </record>
 
-        <record model="ir.ui.view" id="quemen_view_picking_type_form">
-            <field name="name">Quemen Operation Types</field>
-            <field name="model">stock.picking.type</field>
-            <field name="inherit_id" ref="stock.view_picking_type_form"/>
-            <field name="arch" type="xml">
-                <field name="warehouse_id" position="after">
-                    <group string="Quemen extras">
-                        <field name="tipo_operacion_caducidad_id"/>
-                        <!-- <field name="porciones"/> -->
-                        <field name="tipo_operacion_porcion_id"/>
-                        <field name="picking_partner_id"/>
-                        <field name="tipo_transporte"/>
-                        <field name="salida_traspaso"/>
-                        <field name="generar_nuevos_lotes"/>
-                        <field name="bloqueo_traspaso"/>
-                        <field name="generar_nuevos_lotes_tiendas"/>
-                    </group>
-                </field>
+    <!-- STOCK QUANT LIST EDITABLE -->
+    <record model="ir.ui.view" id="view_stock_quant_list_editable_quemen">
+        <field name="name">stock.quant.list.editable.quemen</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+        <field name="arch" type="xml">
+
+            <field name="product_id" position="before">
+                <field name="referencia_interna"/>
             </field>
-        </record>
 
-        <record model="ir.ui.view" id="view_stock_quant_tree_editable_quemen">
-            <field name="name">stock.quant.tree.editable.quemen</field>
-            <field name="model">stock.quant</field>
-            <field name="inherit_id" ref="stock.view_stock_quant_tree_editable"/>
-            <field name="arch" type="xml">
-                <field name="product_id" position="before">
-                    <field name="referencia_interna"/>
-                </field>
-                <xpath expr="//field[@name='inventory_quantity_auto_apply']" position="before">
-                    <field name="expiration_date" optional="show" invisible="context.get('removal_date')" attrs="{'readonly': ['|', ('tracking', '=', 'none'), ('use_expiration_date', '=', False)]}"/>
-                </xpath>
+            <!-- Odoo 19: NO attrs/states. Y NO use_expiration_date (no existe en stock.quant). -->
+            <xpath expr="//field[@name='inventory_diff_quantity']" position="before">
+                <field name="expiration_date"
+                       optional="show"
+                       invisible="context.get('removal_date')"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- STOCK MOVE LINE DETAILED OPERATION LIST -->
+    <record model="ir.ui.view" id="quemen_stock_move_line_detailed_operation_list">
+        <field name="name">stock.move.line.detailded.operation.list</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_move_line_tree_detailed"/>
+        <field name="arch" type="xml">
+            <field name="product_id" position="before">
+                <field name="barcode"/>
             </field>
-        </record>
+        </field>
+    </record>
 
-
-        <record model="ir.ui.view" id="quemen_stock_move_line_detailed_operation_tree">
-            <field name="name">stock.move.line.detailded.operation.tree</field>
-            <field name="model">stock.move.line</field>
-            <field name="inherit_id" ref="stock.view_stock_move_line_detailed_operation_tree"/>
-            <field name="arch" type="xml">
-                <field name="product_id" position="before">
-                    <field name="barcode"/>
-                </field>
-            </field>
-        </record>
-
-
-
-        <!-- <record id="quemen_view_stock_picking_form" model="ir.ui.view">
-            <field name="name">stock.picking.form</field>
-            <field name="model">stock.picking</field>
-            <field name="inherit_id" ref="stock.view_picking_form" />
-            <field name="groups_id" eval="[(6, 0, [ref('quemen.quemen_tiendas') ])]"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='location_dest_id']" position="attributes">
-                    <attribute name="domain">[('name','=','Entrada')]</attribute>
-                </xpath>
-            </field>
-        </record> -->
-
-        <!-- <record id="quemen_view_picking_edi_form" model="ir.ui.view">
-            <field name="model">stock.picking</field>
-            <field name="name">quemen.stock.picking.edi.form</field>
-            <field name="inherit_id" ref="l10n_mx_edi_stock.view_picking_edi_form" />
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='l10n_mx_edi_transport_type']" position="attributes">
-                    <attribute name="attrs">{'invisible': [('country_code', '!=', 'MX')],
-                             'readonly': [('l10n_mx_edi_status', 'not in', [False, 'to_send'])]}</attribute>
-                </xpath>
-                <xpath expr="//button[@name='l10n_mx_edi_action_send_delivery_guide']" position="attributes">
-                    <attribute name="attrs">{'invisible':['|', '|',
-                                        ('state', '!=', 'done'),
-                                        ('country_code', '!=', 'MX'),
-                                        ('l10n_mx_edi_status', 'not in', [False, 'cancelled'])]}</attribute>
-                </xpath>
-
-            </field>
-        </record> -->
 </odoo>

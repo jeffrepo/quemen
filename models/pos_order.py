@@ -10,7 +10,7 @@ class PosOrder(models.Model):
     tipo_venta = fields.Selection([ ('mesas', 'Mesas'),('mostrador', 'Mostrador'),('domicilio', 'A domicilio'),('especial', 'Pedidos especiales')],'Tipo de venta')
     pedido_especial = fields.Boolean('Pedido especial')
     fecha_especial = fields.Date(string="Fecha entrega")
-    hora_especial = fields.Char(string="Hora entrega");
+    hora_especial = fields.Char(string="Hora entrega")
     observaciones_especial = fields.Char("Observaciones")
     sucursal_entrega = fields.Char("Sucursal de entrega")
     autorizo_especial = fields.Char("Autorizó")

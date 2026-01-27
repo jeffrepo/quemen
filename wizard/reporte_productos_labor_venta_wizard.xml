@@ -3,32 +3,38 @@
     <data>
 
         <record id="view_quemen_productos_labor_venta_wizard" model="ir.ui.view">
-              <field name="name">view.quemen.productos.labor.venta.wizard.</field>
-              <field name="model">quemen.reporte_productos_labor_venta.wizard</field>
-              <field name="arch" type="xml">
+            <field name="name">view.quemen.productos.labor.venta.wizard</field>
+            <field name="model">quemen.reporte_productos_labor_venta.wizard</field>
+            <field name="arch" type="xml">
                 <form string="Productos labor de venta">
                     <group>
                         <field name="tienda_id"/>
                     </group>
                     <footer>
-                        <!-- <button name="print_report" string="Print"  type="object" class="btn-primary"/> -->
                         <button name="print_report" string="Generar reporte" type="object" class="oe_highlight"/>
-                        <button string="Cancel" class="btn-default" special="cancel" />
+                        <button string="Cancel" class="btn-default" special="cancel"/>
                     </footer>
                 </form>
-              </field>
+            </field>
         </record>
 
+        <!-- ACTION (más estable que <act_window/>) -->
+        <record id="quemen_action_reporte_productos_labor_venta" model="ir.actions.act_window">
+            <field name="name">Reporte de productos para labor de venta</field>
+            <field name="res_model">quemen.reporte_productos_labor_venta.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <!-- Si lo quieres como "Action" desde pos.order, esto es opcional -->
+            <field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+        </record>
 
-
-        <act_window id="quemen_action_reporte_productos_labor_venta"
-            name="Reporte de productos para labor de venta"
-            binding_model="pos.order"
-            res_model="quemen.reporte_productos_labor_venta.wizard"
-            view_mode="form" target="new"/>
-
-            <menuitem action="quemen_action_reporte_productos_labor_venta" id="menu_productos_labor_venta" parent="quemen.menu_quemen_reporte_tiendas"/>
-
+        <!-- MENU -->
+        <menuitem
+            id="menu_productos_labor_venta"
+            name="Productos labor de venta"
+            parent="quemen.menu_quemen_reporte_tiendas"
+            action="quemen.quemen_action_reporte_productos_labor_venta"
+        />
 
     </data>
 </odoo>

@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_formato_salidas_wizard(models.TransientModel):
     _name = 'quemen.reporte_formato_salidas.wizard'
+    _description = " "
 
     tienda_id = fields.Many2one('pos.config', 'Tienda/Sucursal', default=lambda self: self.env.user.pos_id.id)
     fecha_desde = fields.Date('Fecha desde')

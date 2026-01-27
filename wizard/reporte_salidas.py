@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_salidas_wizard(models.TransientModel):
     _name = 'quemen.reporte_salidas.wizard'
+    _description = " "
 
     fecha_desde = fields.Date('Fecha desde')
     fecha_hasta = fields.Date('Fecha hasta')

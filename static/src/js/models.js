@@ -66,7 +66,7 @@ models.Orderline = models.Orderline.extend({
             console.log('INICIALIZAR POS MODEL')
 	    var self = this;
             self.rpc({
-                model: 'stock.production.lot',
+                model: 'stock.lot',
                 method: 'get_available_lots_for_pos',
                 args: [],
             }).then(function(result) {

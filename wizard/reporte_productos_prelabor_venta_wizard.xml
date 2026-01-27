@@ -1,34 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+  <data>
 
-        <record id="view_quemen_productos_prelabor_venta_wizard" model="ir.ui.view">
-              <field name="name">view.quemen.productos.prelabor.venta.wizard.</field>
-              <field name="model">quemen.reporte_productos_prelabor_venta.wizard</field>
-              <field name="arch" type="xml">
-                <form string="Productos Pre labor de venta">
-                    <group>
-                        <field name="tienda_id"/>
-                    </group>
-                    <footer>
-                        <!-- <button name="print_report" string="Print"  type="object" class="btn-primary"/> -->
-                        <button name="print_report" string="Generar reporte" type="object" class="oe_highlight"/>
-                        <button string="Cancel" class="btn-default" special="cancel" />
-                    </footer>
-                </form>
-              </field>
-        </record>
+    <record id="view_quemen_productos_prelabor_venta_wizard" model="ir.ui.view">
+      <field name="name">view.quemen.productos.prelabor.venta.wizard</field>
+      <field name="model">quemen.reporte_productos_prelabor_venta.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Productos Pre labor de venta">
+          <group>
+            <field name="tienda_id"/>
+          </group>
+          <footer>
+            <button name="print_report" string="Generar reporte" type="object" class="oe_highlight"/>
+            <button string="Cancelar" class="btn-secondary" special="cancel"/>
+          </footer>
+        </form>
+      </field>
+    </record>
 
+    <!-- Acción (forma compatible Odoo 19) -->
+    <record id="quemen_action_reporte_productos_prelabor_venta" model="ir.actions.act_window">
+      <field name="name">Reporte de productos para Pre labor de venta</field>
+      <field name="res_model">quemen.reporte_productos_prelabor_venta.wizard</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+      <!-- Si luego lo quieres como acción contextual en pos.order, lo agregamos con binding_model_id -->
+    </record>
 
+    <!-- Menú -->
+    <menuitem
+      id="menu_productos_prelabor_venta"
+      name="Productos Pre labor de venta"
+      parent="quemen.menu_quemen_reporte_tiendas"
+      action="quemen.quemen_action_reporte_productos_prelabor_venta"
+      sequence="10"
+    />
 
-        <act_window id="quemen_action_reporte_productos_prelabor_venta"
-            name="Reporte de productos para Pre labor de venta"
-            binding_model="pos.order"
-            res_model="quemen.reporte_productos_prelabor_venta.wizard"
-            view_mode="form" target="new"/>
-
-            <menuitem action="quemen_action_reporte_productos_prelabor_venta" id="menu_productos_prelabor_venta" parent="quemen.menu_quemen_reporte_tiendas"/>
-
-
-    </data>
+  </data>
 </odoo>

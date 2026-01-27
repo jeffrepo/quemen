@@ -4,15 +4,16 @@
 from re import findall as regex_findall
 from re import split as regex_split
 
-from odoo.tools.misc import attrgetter
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
 class ProductionLot(models.Model):
-    _inherit = 'stock.production.lot'
+    _inherit = 'stock.lot'
 
     elaboration_date = fields.Date('Fecha de elaboración')
+    expiration_date = fields.Datetime(string="Fecha de expiración", copy=False, tracking=True)
     
 
     @api.model

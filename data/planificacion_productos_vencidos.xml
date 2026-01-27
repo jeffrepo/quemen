@@ -1,17 +1,12 @@
 <odoo>
   <record id="automatizacion_productos_vencidos" model="ir.cron">
-  <field name="name">Verificación de productos vencidos</field>
-  <field name="model_id" eval="ref('stock.model_stock_picking')"/>
-  <!-- <field name="trigger_field_ids" eval="[(4,ref('sale.field_sale_order__state'))]"/>
-  <field name="state">code</field>
-  <field name="trigger">on_write</field> -->
-  <field name="user_id">2</field>
-  <field name="interval_number">1</field>
-  <field name="interval_type">days</field>
-  <field name="active" eval="True"/>
-  <field name="numbercall">-1</field>
-  <field name="priority">1</field>
-  <field name="code">model.verificar_productos_vencidos()</field>
-  <!-- record._create_invoices(final=True) if (record.access_token and record.state == 'sale') else False -->
+    <field name="name">Verificación de productos vencidos</field>
+    <field name="model_id" eval="ref('stock.model_stock_picking')"/>
+    <field name="user_id" eval="ref('base.user_admin')"/>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+    <field name="active" eval="True"/>
+    <field name="priority">1</field>
+    <field name="code">model.verificar_productos_vencidos()</field>
   </record>
 </odoo>

@@ -8,8 +8,10 @@ from datetime import datetime
 class StockMove(models.Model):
     _inherit = "stock.move"
 
+    generar_nuevos_lotes = fields.Boolean(string="Generar nuevos lotes")
+
     def _actualizar_cantidades(self, cantidad):
-        lot_ids = self.env["stock.production.lot"].search([("name","!=", "0000000"),("product_qty", ">", 0)])
+        lot_ids = self.env["stock.lot"].search([("name","!=", "0000000"),("product_qty", ">", 0)])
         logging.warning(len(lot_ids))
         quant_ids = self.env["stock.quant"].search([("location_id","=", 357),("lot_id","in", lot_ids.ids)])
         logging.warning(len(quant_ids))
@@ -45,7 +47,7 @@ class StockMoveLine(models.Model):
     def _onchange_barcode(self):
         for line in self:
             if line.barcode:
-                lot_id = self.env['stock.production.lot'].search([('name','=',line.barcode)])
+                lot_id = self.env['stock.lot'].search([('name','=',line.barcode)])
                 if len(lot_id) > 0:
                     lot_info = False
                     if len(lot_id) == 1:

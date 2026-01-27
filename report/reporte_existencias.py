@@ -15,6 +15,7 @@ import pytz
 
 class ReportExistencias(models.AbstractModel):
     _name = 'report.quemen.reporte_existencias'
+    _description = " "
 
 
     def verificar_productos_vencidos(self):

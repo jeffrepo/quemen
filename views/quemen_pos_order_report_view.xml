@@ -1,96 +1,118 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-        <record id="quemen_view_report_pos_order_pivot" model="ir.ui.view">
-            <field name="name">quemen.report.pos.order.pivot</field>
-            <field name="model">report.pos.order_quemen</field>
-            <field name="arch" type="xml">
-                <pivot string="Point of Sale Analysis" sample="1">
-                    <field name="product_categ_id" type="row"/>
-                    <field name="date" interval="month" type="col"/>
-                    <field name="order_id" type="measure"/>
-                    <field name="product_qty" type="measure"/>
-                    <field name="price_total" type="measure"/>
-                </pivot>
-            </field>
-        </record>
+  <data>
 
-        <record id="view_report_pos_order_quemen_graph" model="ir.ui.view">
-            <field name="name">report.pos.order.quemen.graph</field>
-            <field name="model">report.pos.order_quemen</field>
-            <field name="arch" type="xml">
-                <graph string="Point of Sale Analysis" sample="1">
-                    <field name="product_categ_id"/>
-                    <field name="price_total" type="measure"/>
-                </graph>
-            </field>
-        </record>
+    <!-- PIVOT -->
+    <record id="quemen_view_report_pos_order_pivot" model="ir.ui.view">
+      <field name="name">quemen.report.pos.order.pivot</field>
+      <field name="model">report.pos.order_quemen</field>
+      <field name="arch" type="xml">
+        <pivot string="Point of Sale Analysis" sample="1">
+          <field name="product_categ_id" type="row"/>
+          <field name="date" interval="month" type="col"/>
+          <field name="order_id" type="measure"/>
+          <field name="product_qty" type="measure"/>
+          <field name="price_total" type="measure"/>
+        </pivot>
+      </field>
+    </record>
 
-        <record id="report_pos_order_quemen_view_tree" model="ir.ui.view">
-            <field name="name">report.pos.order.quemen.view.tree</field>
-            <field name="model">report.pos.order_quemen</field>
-            <field name="arch" type="xml">
-                <tree string="Point of Sale Analysis">
-                    <field name="date" widget="date"/>
-                    <field name="order_id" optional="hide"/>
-                    <field name="partner_id" optional="hide"/>
-                    <field name="product_id" optional="show"/>
-                    <field name="product_categ_id" optional="show"/>
-                    <field name="config_id" optional="hide"/>
-                    <field name="company_id" optional="show" groups="base.group_multi_company"/>
-                    <field name="state" optional="show"/>
-                </tree>
-            </field>
-        </record>
+    <!-- GRAPH -->
+    <record id="view_report_pos_order_quemen_graph" model="ir.ui.view">
+      <field name="name">report.pos.order.quemen.graph</field>
+      <field name="model">report.pos.order_quemen</field>
+      <field name="arch" type="xml">
+        <graph string="Point of Sale Analysis" sample="1">
+          <field name="product_categ_id"/>
+          <field name="price_total" type="measure"/>
+        </graph>
+      </field>
+    </record>
 
-        <record id="view_report_pos_order_quemen_search" model="ir.ui.view">
-            <field name="name">report.pos.order.quemen.search</field>
-            <field name="model">report.pos.order_quemen</field>
-            <field name="arch" type="xml">
-                <search string="Point of Sale Analysis">
-                    <field name="date"/>
-                    <separator/>
-                    <filter string="Invoiced" name="invoiced" domain="[('state','=',('invoiced'))]"/>
-                    <filter string="Not Invoiced" name="not_invoiced" domain="[('state','in',['paid', 'done'])]"/>
-                    <separator/>
-                    <filter name="filter_date" date="date"/>
-                    <field name="config_id"/>
-                    <field name="partner_id"/>
-                    <field name="product_id"/>
-                    <field name="product_categ_id"/>
-                    <group expand="1" string="Group By">
-                        <filter string="User" name="User" context="{'group_by':'user_id'}"/>
-                        <filter string="Point of Sale" name="pos" context="{'group_by':'config_id'}"/>
-                        <filter string="Product" name="product" context="{'group_by':'product_id'}"/>
-                        <filter string="Product Category" name="product_category" context="{'group_by':'product_categ_id'}"/>
-                        <separator/>
-                        <filter string="Order Date" name="order_month" context="{'group_by':'date:month'}"/>
-                    </group>
-                </search>
-            </field>
-        </record>
+    <!-- LIST -->
+    <record id="report_pos_order_quemen_view_list" model="ir.ui.view">
+      <field name="name">report.pos.order.quemen.view.list</field>
+      <field name="model">report.pos.order_quemen</field>
+      <field name="arch" type="xml">
+        <list string="Point of Sale Analysis">
+          <field name="date"/>
+          <field name="order_id" optional="hide"/>
+          <field name="partner_id" optional="hide"/>
+          <field name="product_id" optional="show"/>
+          <field name="product_categ_id" optional="show"/>
+          <field name="config_id" optional="hide"/>
+          <field name="company_id" optional="show" groups="base.group_multi_company"/>
+          <field name="state" optional="show"/>
+          <field name="invoiced" optional="hide"/>
+        </list>
+      </field>
+    </record>
 
-        <record id="filter_quemen_orders_per_session" model="ir.filters">
-            <field name="name">Pos session Quemen</field>
-            <field name="model_id">report.pos.order_quemen</field>
-            <field name="user_id" eval="False"/>
-            <field name="context">{'group_by': ['date', 'session_id']}</field>
-        </record>
+    <!-- SEARCH -->
+    <record id="view_report_pos_order_quemen_search" model="ir.ui.view">
+      <field name="name">report.pos.order.quemen.search</field>
+      <field name="model">report.pos.order_quemen</field>
+      <field name="arch" type="xml">
+        <search string="Point of Sale Analysis">
 
-        <record id="action_quemen_report_pos_order_all" model="ir.actions.act_window">
-            <field name="name">Orders Analysis Quemen</field>
-            <field name="res_model">report.pos.order_quemen</field>
-            <field name="view_mode">graph,pivot</field>
-            <field name="search_view_id" ref="view_report_pos_order_quemen_search"/>
-            <field name="context">{'group_by_no_leaf':1,'group_by':[]}</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    No data yet!
-                </p><p>
-                    Create a new POS order
-                </p>
-            </field>
-        </record>
+          <!-- Campos -->
+          <field name="config_id"/>
+          <field name="partner_id"/>
+          <field name="product_id"/>
+          <field name="product_categ_id"/>
+          <field name="state"/>
+          <field name="invoiced"/>
 
-        <menuitem id="menu_quemen_report_pos_order_all" name="Detalle de vnetas QUemen" action="action_quemen_report_pos_order_all" parent="point_of_sale.menu_point_rep" sequence="2"/>
+          <separator/>
 
+          <!-- Filtros -->
+          <filter string="Invoiced" name="invoiced_true" domain="[('invoiced','=',True)]"/>
+          <filter string="Not Invoiced" name="invoiced_false" domain="[('invoiced','=',False)]"/>
+
+          <separator/>
+
+          <!-- Group by SIN <group> para evitar validación problemática -->
+          <filter string="Group by User" name="gb_user" context="{'group_by':'user_id'}"/>
+          <filter string="Group by POS" name="gb_pos" context="{'group_by':'config_id'}"/>
+          <filter string="Group by Product" name="gb_product" context="{'group_by':'product_id'}"/>
+          <filter string="Group by Category" name="gb_category" context="{'group_by':'product_categ_id'}"/>
+          <filter string="Group by Month" name="gb_month" context="{'group_by':'date:month'}"/>
+
+        </search>
+      </field>
+    </record>
+
+    <!-- FAVORITE FILTER (ir.filters) -->
+    <record id="filter_quemen_orders_per_session" model="ir.filters">
+      <field name="name">Pos session Quemen</field>
+      <field name="model_id">report.pos.order_quemen</field>
+      <field name="context">{'group_by': ['date', 'session_id']}</field>
+      <!-- Odoo 19: ir.filters ya no acepta user_id aquí -->
+    </record>
+
+    <!-- ACTION -->
+    <record id="action_quemen_report_pos_order_all" model="ir.actions.act_window">
+      <field name="name">Orders Analysis Quemen</field>
+      <field name="res_model">report.pos.order_quemen</field>
+      <field name="view_mode">list,graph,pivot</field>
+      <field name="search_view_id" ref="view_report_pos_order_quemen_search"/>
+      <field name="context">{'group_by_no_leaf': 1, 'group_by': []}</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+          No data yet!
+        </p>
+        <p>
+          Create a new POS order
+        </p>
+      </field>
+    </record>
+
+    <!-- MENU -->
+    <menuitem id="menu_quemen_report_pos_order_all"
+              name="Detalle de ventas Quemen"
+              action="action_quemen_report_pos_order_all"
+              parent="point_of_sale.menu_point_rep"
+              sequence="2"/>
+
+  </data>
 </odoo>

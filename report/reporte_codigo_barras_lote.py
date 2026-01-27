@@ -7,6 +7,7 @@ import logging
 
 class CaodigoBarrasLote(models.AbstractModel):
     _name = 'report.quemen.reporte_codigo_barras_lote'
+    _description = " "
 
     nombre_reporte = ''
 
@@ -123,7 +124,7 @@ class CaodigoBarrasLote(models.AbstractModel):
                     removal_date = elaboration_date + datetime.timedelta(days=line.product_id.removal_time)
                     use_date = elaboration_date + datetime.timedelta(days=line.product_id.use_time)
                     alert_date = elaboration_date + datetime.timedelta(days=line.product_id.alert_time)
-                    # lot_id = self.env['stock.production.lot'].create({'product_id': line.product_id.id,
+                    # lot_id = self.env['stock.lot'].create({'product_id': line.product_id.id,
                     #                                                   'elaboration_date': elaboration_date,
                     #                                                   'expiration_date': expiration_date,
                     #                                                   'removal_date': removal_date,

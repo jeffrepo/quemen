@@ -16,6 +16,7 @@ from odoo.fields import Date, Datetime
 
 class reporte_entrega_valores_wizard(models.TransientModel):
     _name = 'quemen.reporte_entrega_valores.wizard'
+    _description = " "
 
     def _get_current_date(self):
         return datetime.datetime.now() - timedelta(hours=6)

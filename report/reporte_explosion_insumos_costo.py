@@ -17,6 +17,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class ReportExplosionInsumosCosto(models.AbstractModel):
     _name = 'report.quemen.reporte_explosion_insumos_costo'
+    _description = " "
 
     def get_info(self, o):
         #info contiene todo la informacion de productos por componente o materia prima

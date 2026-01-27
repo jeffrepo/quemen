@@ -4,8 +4,7 @@ from odoo.exceptions import UserError
 import logging
 import pytz
 
-class ProductTemplateExtraFields(models.Model):
-    _name = 'product.template'
+class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     producto_porciones = fields.Many2one('product.template', string="Producto porciones")

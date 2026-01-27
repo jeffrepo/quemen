@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, tools
+from odoo import fields, models, tools
 
 
 class PosOrderReportQuemen(models.Model):
@@ -18,12 +18,16 @@ class PosOrderReportQuemen(models.Model):
     state = fields.Selection(
         [('draft', 'New'), ('paid', 'Paid'), ('done', 'Posted'),
          ('invoiced', 'Invoiced'), ('cancel', 'Cancelled')],
-        string='Status', readonly=True)
+        string='Status', readonly=True
+    )
     user_id = fields.Many2one('res.users', string='User', readonly=True)
     price_total = fields.Float(string='Total Price', readonly=True)
     price_sub_total = fields.Float(string='Subtotal w/o discount', readonly=True)
     total_discount = fields.Float(string='Total Discount', readonly=True)
-    average_price = fields.Float(string='Average Price', readonly=True, group_operator="avg")
+
+    # FIX: group_operator deprecated since Odoo 18 -> use aggregator
+    average_price = fields.Float(string='Average Price', readonly=True, aggregator="avg")
+
     company_id = fields.Many2one('res.company', string='Company', readonly=True)
     nbr_lines = fields.Integer(string='Sale Line Count', readonly=True)
     product_qty = fields.Integer(string='Product Quantity', readonly=True)
@@ -62,7 +66,6 @@ class PosOrderReportQuemen(models.Model):
                 pt.categ_id AS product_categ_id,
                 p.product_tmpl_id,
                 ps.config_id,
-                pt.pos_categ_id,
                 s.pricelist_id,
                 s.session_id,
                 s.account_move IS NOT NULL AS invoiced,
@@ -80,31 +83,33 @@ class PosOrderReportQuemen(models.Model):
                 LEFT JOIN res_company co ON (s.company_id=co.id)
                 LEFT JOIN res_currency cu ON (co.currency_id=cu.id)
         """
+
     def _where(self):
         return """
             WHERE DATE(s.date_order AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City') = CURRENT_DATE
         """
-    
+
     def _group_by(self):
         return """
             GROUP BY
-                s.id, s.date_order, s.partner_id,s.state, pt.categ_id,
+                s.id, s.date_order, s.partner_id, s.state, pt.categ_id,
                 s.user_id, s.company_id, s.sale_journal,
                 s.pricelist_id, s.account_move, s.create_date, s.session_id,
                 l.product_id,
-                pt.categ_id, pt.pos_categ_id,
+                pt.categ_id,
                 p.product_tmpl_id,
                 ps.config_id
         """
 
     def init(self):
-        tools.drop_view_if_exists(self._cr, self._table)
-        self._cr.execute("""
+        cr = self.env.cr
+        tools.drop_view_if_exists(cr, self._table)
+        cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
                 %s
                 %s
                 %s
                 %s
             )
-        """ % (self._table, self._select(), self._from(), self._where(), self._group_by())
-        )
+        """ % (self._table, self._select(), self._from(), self._where(), self._group_by()))
+

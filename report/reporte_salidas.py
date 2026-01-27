@@ -15,6 +15,7 @@ import pytz
 
 class ReportSalidas(models.AbstractModel):
     _name = 'report.quemen.reporte_salidas'
+    _description = " "
 
     def _get_tienda(self,tienda):
         tienda_id = self.env['pos.config'].search([('id','=',tienda[0])])

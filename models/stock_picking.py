@@ -8,7 +8,7 @@ from lxml import etree
 import re
 from dateutil.relativedelta import relativedelta
 
-class Picking(models.Model):
+class StockPicking(models.Model):
     _inherit = "stock.picking"
 
     # l10n_mx_edi_customs_regime_ids = fields.Many2many(
@@ -21,7 +21,7 @@ class Picking(models.Model):
     generar_nuevos_lotes = fields.Boolean("Generar nuevos lotes", related="picking_type_id.generar_nuevos_lotes")
     producto_ids = fields.One2many("quemen.stock_move_line", "picking_id", "Productos")
     dia_congelamiento = fields.Boolean("Día congelamiento")
-    generar_nuevos_lotes_tiendas = fields.Boolean("Generar nuevos lotes", related="picking_type_id.generar_nuevos_lotes_tiendas")
+    generar_nuevos_lotes_tiendas = fields.Boolean("Generar nuevos lotes tiendas", related="picking_type_id.generar_nuevos_lotes_tiendas")
 
     def write(self, vals):
         for picking in self:
@@ -29,21 +29,21 @@ class Picking(models.Model):
                 partner_id = self.env["res.partner"].search([("id", "=", vals["partner_id"])])
                 if partner_id.location_dest_id:
                     vals['location_dest_id'] = partner_id.location_dest_id.id
-        res = super(Picking, self).write(vals)
+        res = super(StockPicking, self).write(vals)
         return res
 
     @api.model
     def create(self, vals):
-        res = super(Picking, self).create(vals)
+        res = super(StockPicking, self).create(vals)
         if res:
             if res.picking_type_id and res.picking_type_id.picking_partner_id and res.picking_type_id.tipo_transporte:
                 res.write({'partner_id': res.picking_type_id.picking_partner_id.id})
                 res.write({'l10n_mx_edi_transport_type': res.picking_type_id.tipo_transporte})
         return res
 
-    @api.depends('move_lines.state', 'move_lines.date', 'move_type')
+    @api.depends('move_line_ids.state', 'move_line_ids.date', 'move_type')
     def _compute_scheduled_date(self):
-        res = super(Picking, self)._compute_scheduled_date()
+        res = super(StockPicking, self)._compute_scheduled_date()
         for picking in self:
             new_datetime = picking.scheduled_date
             picking.scheduled_date = new_datetime + timedelta(hours=2)
@@ -74,7 +74,7 @@ class Picking(models.Model):
                         removal_date = expiration_date
                         use_date = expiration_date
                         alert_date = expiration_date
-                        nuevo_lote_id = self.env['stock.production.lot'].create({
+                        nuevo_lote_id = self.env['stock.lot'].create({
                             'company_id': self.env.company.id,
                             'elaboration_date': elaboration_date,
                             'expiration_date': expiration_date,
@@ -120,7 +120,7 @@ class Picking(models.Model):
             if  transferencia_id:
                 transferencia_id.action_assign()
                 transferencia_id.button_validate()
-        res = super(Picking, self).button_validate()
+        res = super(StockPicking, self).button_validate()
         return res
 
 
@@ -186,7 +186,7 @@ class Picking(models.Model):
                 # logging.warn("lista_id[lneas]['product_id']")
                 # logging.warn(lista_id[lneas]['product_id'])
 
-                lotes = self.env['stock.production.lot'].search([('name', '=', lista_id[lneas]['lot_id']), ('product_id', '=', lista_id[lneas]['product_id'])])
+                lotes = self.env['stock.lot'].search([('name', '=', lista_id[lneas]['lot_id']), ('product_id', '=', lista_id[lneas]['product_id'])])
                 lote2_id = False
                 if len(lotes)>0:
                     # logging.warn(">0")
@@ -195,7 +195,7 @@ class Picking(models.Model):
                     # logging.warn(lote2_id)
                 else:
                     # logging.warn("else")
-                    lote2_id = self.env['stock.production.lot'].create({
+                    lote2_id = self.env['stock.lot'].create({
                     'name': lista_id[lneas]['lot_id'],
                     'company_id': self.env.company.id,
                     'expiration_date': lista_id[lneas]['expiration_date'],
@@ -290,7 +290,7 @@ class Picking(models.Model):
                 # logging.warn("lista_id[lneas]['product_id']")
                 # logging.warn(lista_id[lneas]['product_id'])
 
-                lotes = self.env['stock.production.lot'].search([('name', '=', lista_id[lneas]['lot_id']), ('product_id', '=', lista_id[lneas]['product_id'])])
+                lotes = self.env['stock.lot'].search([('name', '=', lista_id[lneas]['lot_id']), ('product_id', '=', lista_id[lneas]['product_id'])])
                 lote2_id = False
                 if len(lotes)>0:
                     # logging.warn(">0")
@@ -298,7 +298,7 @@ class Picking(models.Model):
                     # logging.warn(lote2_id)
                 else:
                     # logging.warn("else")
-                    lote2_id = self.env['stock.production.lot'].create({
+                    lote2_id = self.env['stock.lot'].create({
                     'name': lista_id[lneas]['lot_id'],
                     'company_id': self.env.company.id,
                     'life_date': lista_id[lneas]['life_date'],

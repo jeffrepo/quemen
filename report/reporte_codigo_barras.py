@@ -6,6 +6,7 @@ import logging
 
 class CaodigoBarras(models.AbstractModel):
     _name = 'report.quemen.reporte_codigo_barras'
+    _description = " "
 
     nombre_reporte = ''
 
@@ -70,12 +71,12 @@ class CaodigoBarras(models.AbstractModel):
 
     @api.model
     def _get_report_values(self, docids, data=None):
-        # self.model = 'stock.production.lot'
-        docs = self.env['stock.production.lot'].browse(docids)
+        # self.model = 'stock.lot'
+        docs = self.env['stock.lot'].browse(docids)
 
         return {
             'doc_ids': docids,
-            'doc_model': 'stock.production.lot',
+            'doc_model': 'stock.lot',
             'docs': docs,
             'fecha_barras': self.fecha_barras,
         }

@@ -15,6 +15,7 @@ import pytz
 
 class ReportEntregaValores(models.AbstractModel):
     _name = 'report.quemen.reporte_entrega_valores'
+    _description = " "
 
 
     def _get_entrega_valores(self, fecha_inicio,fecha_fin, tienda_id):

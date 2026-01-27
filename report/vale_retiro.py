@@ -5,7 +5,7 @@ import logging
 
 class ReportValeRetiro(models.AbstractModel):
     _name = 'report.quemen.vale_retiro'
-
+    _description = " "
 
     @api.model
     def _get_report_values(self, docids, data=None):

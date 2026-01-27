@@ -7,6 +7,7 @@ import logging
 
 class CaodigoBarrasLoteTraslado(models.AbstractModel):
     _name = 'report.quemen.reporte_codigo_barras_lotet'
+    _description = " "
 
     nombre_reporte = ''
 

@@ -15,7 +15,7 @@ import pytz
 
 class ReportIngresoInventarioPt(models.AbstractModel):
     _name = 'report.quemen.reporte_ingreso_inventario_pt'
-
+    _description = " "
 
     def verificar_productos_vencidos(self):
         logging.warn('verificar para albaran')

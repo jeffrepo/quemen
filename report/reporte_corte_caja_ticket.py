@@ -6,6 +6,7 @@ import logging
 
 class ReporteCorteCajaTicket(models.AbstractModel):
     _name = 'report.quemen.reporte_corte_caja_ticket'
+    _description = " "
 
     nombre_reporte=''
 

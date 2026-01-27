@@ -89,7 +89,7 @@ screens.ActionpadWidget.include({
                   // var tipo_ubicacion = l.pos.config.picking_type_id[0];
 
                   rpc.query({
-                                  model: 'stock.production.lot',
+                                  model: 'stock.lot',
                                   method: 'search_read',
                                   args: [[['name', '=', l.pack_lot_lines.models[0].get_lot_name()]], ['id']],
                               })
