@@ -8,6 +8,11 @@ def migrate(cr, version):
         ON CONFLICT (key) DO UPDATE SET value = excluded.value, write_date = now()
     """)
 
+
+    # sms.sms: evitar operaciones costosas en tablas grandes
+    util.alter_column_type(cr, "sms_sms", "uuid", "varchar")
+    util.create_column(cr, "sms_sms", "to_delete", "bool", default=False)
+
     # 1) Crear columnas para que Odoo 17 NO intente computarlas por ORM sobre 3.4M registros
     util.create_column(cr, "pos_order", "l10n_mx_edi_cfdi_attachment_id", "int4")
     util.create_column(cr, "pos_order", "l10n_mx_edi_cfdi_state", "varchar")
