@@ -108,4 +108,7 @@
         # ],
     },
     'license': 'LGPL-3',
+    'installable': True,
+    'application': False,
+    'auto_install': False,
 }
