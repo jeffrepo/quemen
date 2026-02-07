@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="quemen_pos_config_view_form_inherit" model="ir.ui.view">
+        <field name="name">quemen.pos.config.form.view</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Odoo 17+/19: POS config uses <setting> blocks inside the o_settings_container row.
+                 We inject Quemen settings into the existing settings container (not create_mode). -->
+            <xpath expr="//div[contains(@class,'o_settings_container') and contains(@invisible,'pos_config_create_mode')]" position="inside">
+
+                <setting string="Envio de salida por vencimiento">
+                    <field name="envio_salida_vencimiento_id"/>
+                </setting>
+
+                <setting string="Efectivo máximo">
+                    <field name="efectivo_maximo"/>
+                </setting>
+
+                <setting string="Cliente por defecto">
+                    <field name="cliente_id"/>
+                </setting>
+
+                <setting string="Tipo de venta">
+                    <field name="tipo_venta"/>
+                </setting>
+
+                <setting string="Tipo de operacion entrada porciones">
+                    <field name="producto_porciones"/>
+                </setting>
+
+                <setting string="Términos y condiciones">
+                    <field name="terminos_condiciones"/>
+                </setting>
+
+                <setting string="Secuencia">
+                    <field name="secuencia_id"/>
+                </setting>
+
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

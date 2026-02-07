@@ -70,7 +70,7 @@
         # 'views/stock_quant_views.xml',
         'views/pos_session_view.xml',
         # 'views/res_partner_views.xml',
-        'views/pos_config_view.xml',
+        'views/pos_config_view_quemen.xml',
         'wizard/reporte_entrega_valores_wizard.xml',
         # 'views/reloj_checador_wizard.xml',
         # 'views/hr_views.xml',
