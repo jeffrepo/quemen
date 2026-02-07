@@ -357,7 +357,7 @@ class StockPicking(models.Model):
                                 'picking_type_id': tienda.envio_salida_vencimiento_id.id,
                                 'location_id': ubicacion_actual.id,
                                 'location_dest_id': destino_id.id,
-                                'immediate_transfer': True,
+                                #'immediate_transfer': True,
                             }
                             envio_id = self.env['stock.picking'].create(envio)
                             for quant in inventario[tienda.envio_salida_vencimiento_id.default_location_src_id.id]['productos']:
@@ -444,7 +444,7 @@ class StockPicking(models.Model):
                                 'picking_type_id': tienda.envio_salida_vencimiento_id.id,
                                 'location_id': ubicacion_actual.id,
                                 'location_dest_id': destino_id.id,
-                                'immediate_transfer': True,
+                                #'immediate_transfer': True,
                             }
                             envio_id = self.env['stock.picking'].create(envio)
                             for quant in inventario[tienda.envio_salida_vencimiento_id.default_location_src_id.id]['productos']:
