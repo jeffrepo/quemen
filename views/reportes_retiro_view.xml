@@ -1,40 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-  <report
-    id="action_reporte_retiros"
-    string="Reporte de retiros"
-    model="pos.session"
-    report_type="qweb-pdf"
-    file="quemen.reporte_retiros_sesion"
-    name="quemen.reporte_retiros_sesion"
-    paperformat="paperformat_ticket"
-    menu="True"
-    />
-
-    <record id="view_quemen_reportes_retiro" model="ir.ui.view">
-
-      <field name="name">Reporte de retiros wizard</field>
-      <field name="model">quemen.reporte_retiros_sesion.wizard</field>
-      <field name="arch" type="xml">
-        <form string="Reporte de retiros">
-          <group string="Retiros">
-            <field name="retiro_id"/>
-          </group>
-          <footer>
-            <button name="print_report" string="Print"  type="object" class="btn-primary"/>
-            <button string="Cancel" class="btn-default" special="cancel" />
-          </footer>
-        </form>
-      </field>
+    <record id="action_reporte_retiros" model="ir.actions.report">
+        <field name="name">Reporte de retiros</field>
+        <field name="model">pos.session</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quemen.reporte_retiros_sesion</field>
+        <field name="report_file">quemen.reporte_retiros_sesion</field>
+        <field name="binding_model_id" ref="point_of_sale.model_pos_session"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="quemen.paperformat_ticket"/>
     </record>
 
-    <act_window id="quemen_action_reportes_retiro"
+    <record id="view_quemen_reportes_retiro" model="ir.ui.view">
+        <field name="name">Reporte de retiros wizard</field>
+        <field name="model">quemen.reporte_retiros_sesion.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte de retiros">
+                <group string="Retiros">
+                    <field name="retiro_id"/>
+                </group>
+                <footer>
+                    <button name="print_report" string="Print" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 
-      name="Reporte retiros"
-      res_model="quemen.reporte_retiros_sesion.wizard"
-      binding_model="pos.session"
-      view_mode="form" target="new"
-      />
+    <record id="quemen_action_reportes_retiro" model="ir.actions.act_window">
+        <field name="name">Reporte retiros</field>
+        <field name="res_model">quemen.reporte_retiros_sesion.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="point_of_sale.model_pos_session"/>
+    </record>
 
 </odoo>
