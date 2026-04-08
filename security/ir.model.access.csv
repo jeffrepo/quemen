@@ -2,3 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_pos_pos_promociones,pos.order.pos.promociones,pos_promociones.model_pos_promociones_promocion,point_of_sale.group_pos_user,1,1,1,0
 access_pos_quemen_retiros,pos.order.pos.retiros,quemen.model_quemen_retiros,point_of_sale.group_pos_user,1,1,1,0
 access_pos_quemen_retiros₁,pos.order.pos.retiros1,quemen.model_quemen_retiros,point_of_sale.group_pos_manager,1,1,1,0
+access_quemen_inventory_xlsx_wizard,access.quemen.inventory.xlsx.wizard,model_quemen_inventory_xlsx_wizard,base.group_user,1,1,1,1
+

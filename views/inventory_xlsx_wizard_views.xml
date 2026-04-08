@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quemen_inventory_xlsx_wizard_form" model="ir.ui.view">
+        <field name="name">quemen.inventory.xlsx.wizard.form</field>
+        <field name="model">quemen.inventory.xlsx.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte Inventario XLSX">
+                <group>
+                    <field name="warehouse_id"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                </group>
+                <footer>
+                    <button name="action_generate_xlsx"
+                            string="Generar XLSX"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quemen_inventory_xlsx_wizard" model="ir.actions.act_window">
+        <field name="name">Reporte Inventario XLSX</field>
+        <field name="res_model">quemen.inventory.xlsx.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_quemen_inventory_xlsx_wizard"
+              name="Reporte Inventario XLSX"
+              parent="stock.menu_stock_warehouse_mgmt"
+              action="action_quemen_inventory_xlsx_wizard"
+              sequence="90"/>
+</odoo>
