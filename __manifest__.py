@@ -41,7 +41,7 @@
         # descomentar la linea de abajo 
         # 'views/stock_lot_views.xml',
         'views/quemen_views.xml',
-        
+        'views/inventory_xlsx_wizard_views.xml',
         'views/report_deliveryslip_t.xml',
         'views/reporte_ingreso_inventario_pt.xml',
         'views/stock_inventory_report_inherit.xml',
