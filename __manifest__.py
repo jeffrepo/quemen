@@ -64,6 +64,8 @@
         'views/reporte_existencias.xml',
         'wizard/reporte_existencias_wizard.xml',
         'views/stock_picking_views.xml',
+        'views/mrp_poliza_export_wizard_views.xml',
+        '/views/stock_location_views.xml',
         # 'views/reporte_formato_salidas.xml',
         # 'views/reporte_salidas.xml',
         # 'wizard/reporte_salidas_wizard.xml',

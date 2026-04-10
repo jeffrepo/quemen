@@ -1,0 +1,34 @@
+<odoo>
+    <record id="view_mrp_poliza_export_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.poliza.export.wizard.form</field>
+        <field name="model">mrp.poliza.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Exportar póliza">
+                <group>
+                    <field name="location_ids"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                </group>
+                <group>
+                    <field name="file_data" filename="file_name"/>
+                </group>
+                <footer>
+                    <button name="action_export_xlsx" string="Exportar" type="object" class="btn-primary"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mrp_poliza_export_wizard" model="ir.actions.act_window">
+        <field name="name">Exportar póliza fabricación</field>
+        <field name="res_model">mrp.poliza.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_mrp_poliza_export"
+              name="Exportar póliza fabricación"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_poliza_export_wizard"/>
+</odoo>

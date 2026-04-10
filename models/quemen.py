@@ -179,8 +179,9 @@ class QuemenOpLote(models.Model):
     product_ids = fields.One2many('quemen.op_lote_line', 'lot_id', string="Productos", tracking=True)
     reference = fields.Char('Referencia', tracking=True)
     state = fields.Selection(
-        [('borrador', 'Borrador'), ('confirmado', 'Confirmado')],
+        [('borrador', 'Borrador'), ('confirmado', 'Confirmado'), ('despachado', 'Despachado')],
         'Estado', readonly=True, copy=False, default='borrador', tracking=True)
+    despacho_id = fields.Many2one('stock.picking','Despacho')
 
     @api.model
     def create(self, vals):
@@ -215,6 +216,48 @@ class QuemenOpLote(models.Model):
 
                         if lot_id:
                             line.write({'lot_barcode_id': lot_id})
+
+    def confirm_out(self):
+        for lot in self:
+            error_msg = ''
+            if lot.product_ids:
+                tipo_operacion_id = self.env['stock.picking.type'].search([("name","=","Transitoria fabricacion")])
+                ubicacion_origen_id =  tipo_operacion_id.default_location_src_id.id
+                ubicacion_destino_id = tipo_operacion_id.default_location_dest_id.id
+                envio = {
+                    'picking_type_id': tipo_operacion_id.id,
+                    'location_id': ubicacion_origen_id,
+                    'location_dest_id': ubicacion_destino_id,
+                    'move_type': 'direct',
+                }
+                logging.warning("envio")
+                logging.warning(envio)
+                logging.warning(tipo_operacion_id)
+                envio_id = self.env['stock.picking'].create(envio)
+
+                for line in lot.product_ids:
+                    qty_bom = line.product_id.bom_ids[0].product_qty
+                    if line.product_id.bom_ids and line.product_id.bom_ids.bom_line_ids:
+                        for mrp_line in line.product_id.bom_ids[0].bom_line_ids:
+
+                            move = {
+                                'product_id': mrp_line.product_id.id,
+                                #'name': mrp_line.product_id.name,
+                                'product_uom': mrp_line.product_id.uom_id.id,
+                                'location_id': ubicacion_origen_id,
+                                'product_uom_qty': mrp_line.product_qty * qty_bom,
+                                'location_dest_id': ubicacion_destino_id,
+                                # 'lot_id': quant.lot_id.id,
+                                'picking_id': envio_id.id
+                            }
+                            move_id = self.env['stock.move'].create(move)
+                            move['move_id'] = move_id.id
+                            move['product_uom_qty'] = quant.quantity
+                            #move['product_uom_qty'] = quant.quantity
+                   # move['lot_id'] = quant.lot_id.id
+
+                lot.despacho_id = envio_id.id
+            lot.write({'state': "despachado"})
 
 
     def confirm_lot(self):
