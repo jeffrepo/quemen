@@ -12,4 +12,4 @@ from . import reporte_codigo_barras_lote
 from . import reporte_productos_prelabor_venta
 from . import reporte_codigo_barras_lotet
 from . import inventory_xlsx_wizard
-form . import mrp_poliza_export_wizard
+from . import mrp_poliza_export_wizard
