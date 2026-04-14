@@ -252,7 +252,7 @@ class QuemenOpLote(models.Model):
                             }
                             move_id = self.env['stock.move'].create(move)
                             move['move_id'] = move_id.id
-                            move['product_uom_qty'] = quant.quantity
+                            move['product_uom_qty'] = mrp_line.product_qty * qty_bom
                             #move['product_uom_qty'] = quant.quantity
                    # move['lot_id'] = quant.lot_id.id
 
