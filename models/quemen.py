@@ -242,7 +242,7 @@ class QuemenOpLote(models.Model):
 
                             move = {
                                 'product_id': mrp_line.product_id.id,
-                                #'name': mrp_line.product_id.name,
+                                'name': mrp_line.product_id.name,
                                 'product_uom': mrp_line.product_id.uom_id.id,
                                 'location_id': ubicacion_origen_id,
                                 'product_uom_qty': mrp_line.product_qty * qty_bom,
