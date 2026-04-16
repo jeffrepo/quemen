@@ -62,9 +62,9 @@ class InventoryXlsxWizard(models.TransientModel):
     def _get_locations_domain(self):
         self.ensure_one()
         warehouse = self.warehouse_id
-
-        location_ids = warehouse.view_location_id.child_ids.ids + [warehouse.view_location_id.id]
-        return location_ids
+        return self.env["stock.location"].search([
+            ("id", "child_of", warehouse.view_location_id.id),
+        ]).ids
 
     def _get_report_lines(self):
         self.ensure_one()
@@ -84,13 +84,13 @@ class InventoryXlsxWizard(models.TransientModel):
         internal_location_ids = internal_locations.ids
 
         Product = self.env["product.product"]
-        
+
         # Detectar campo según versión
         if "is_storable" in Product._fields:
             domain = [("is_storable", "=", True)]
         else:
             domain = [("type", "=", "product")]
-        
+
         products = Product.search(
             domain,
             order="default_code, name"
