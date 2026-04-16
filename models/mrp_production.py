@@ -25,9 +25,10 @@ class MrpProduction(models.Model):
 
     # lot_id = fields.Many2one('quemen.op_lote','Lote')
 
-    @api.onchange('bom_id', 'product_id', 'product_qty', 'product_uom_id', 'move_raw_ids')
-    def _onchange_move_raw(self):
-        res = super(MrpProduction, self)._onchange_move_raw()
+    
+    @api.depends('company_id', 'bom_id', 'product_id', 'product_qty', 'product_uom_id', 'location_src_id', 'never_product_template_attribute_value_ids')
+    def _compute_move_raw_ids(self):
+        res = super(MrpProduction, self)._compute_move_raw_ids()
         for line in self.move_raw_ids:
             if len(line.product_id.bom_ids) > 0:
                 if line.product_id.bom_ids[0].picking_type_id:

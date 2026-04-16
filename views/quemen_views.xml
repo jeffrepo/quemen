@@ -273,7 +273,13 @@
                     string="Crear Lotes"
                     class="oe_highlight"
                     type="object"
-                    invisible="state != 'borrador'"/>
+                    invisible="state not in  ['despachado']"/>
+            <button name="confirm_out"
+                    string="Despacho"
+                    class="oe_highlight"
+                    type="object"
+                    invisible="state not in ['borrador','confirmado']"/>
+              
             <field name="state" widget="statusbar" statusbar_visible="borrador,confirmado"/>
           </header>
 
@@ -287,6 +293,7 @@
                 <field name="date" readonly="state == 'confirmado'"/>
                 <field name="date_mrp_production" readonly="state == 'confirmado'"/>
                 <field name="reference" readonly="state == 'confirmado'"/>
+               <field name="despacho_id" readonly="True"/>
               </group>
 
               <field name="product_ids">
@@ -302,11 +309,7 @@
 
           </sheet>
 
-          <div class="oe_chatter">
-            <field name="message_follower_ids"/>
-            <field name="activity_ids"/>
-            <field name="message_ids"/>
-          </div>
+            <chatter/>
 
         </form>
       </field>

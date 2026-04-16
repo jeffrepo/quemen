@@ -23,5 +23,5 @@ quemen.access_quemen_reporte_entrega_valores_wizard,access_quemen_reporte_entreg
 quemen.access_quemen_promociones,access_quemen_promociones,quemen.model_quemen_promociones,base.group_user,1,1,1,1
 quemen.access_quemen_promociones_combos,access_quemen_promociones_combos,quemen.model_quemen_promociones_combos,base.group_user,1,1,1,1
 quemen.access_quemen_promociones_dosporuno,access_quemen_promociones_dosporuno,quemen.model_quemen_promociones_dosporuno,base.group_user,1,1,1,1
-
-
+access_quemen_inventory_xlsx_wizard,access.quemen.inventory.xlsx.wizard,model_quemen_inventory_xlsx_wizard,base.group_user,1,1,1,1
+access_mrp_poliza_export_wizard,mrp.poliza.export.wizard,model_mrp_poliza_export_wizard,,1,1,1,1

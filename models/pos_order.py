@@ -64,21 +64,28 @@ class PosOrder(models.Model):
     def _prepare_invoice_vals(self):
         res = super(PosOrder, self)._prepare_invoice_vals()
         l10n_mx_edi_payment_method_id = False
+    
         if self.payment_ids:
             for line in self.payment_ids:
                 if line.amount > 0:
                     variable = False
                     if line.payment_method_id.name == "Efectivo":
                         variable = '01'
-                    elif line.payment_method_id.name in ["Tarjeta credito","Tarjeta credito Netpay"]:
+                    elif line.payment_method_id.name in ["Tarjeta credito", "Tarjeta credito Netpay"]:
                         variable = '04'
-                    elif line.payment_method_id.name in ["Tarjeta debito","Tarjeta debito Netpay"]:
+                    elif line.payment_method_id.name in ["Tarjeta debito", "Tarjeta debito Netpay"]:
                         variable = '28'
                     elif line.payment_method_id.name == 'Transferencia':
                         variable = '03'
                     else:
                         variable = '01'
-                    l10n_mx_edi_payment_method_id = self.env['l10n_mx_edi.payment.method'].search([('code','=',variable)])
+    
+                    payment_method = self.env['l10n_mx_edi.payment.method'].search(
+                        [('code', '=', variable)],
+                        limit=1
+                    )
+                    l10n_mx_edi_payment_method_id = payment_method.id or False
+    
         res['l10n_mx_edi_payment_method_id'] = l10n_mx_edi_payment_method_id
         return res
 
