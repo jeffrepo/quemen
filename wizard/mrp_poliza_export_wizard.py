@@ -66,15 +66,15 @@ class MrpPolizaExportWizard(models.TransientModel):
                 account = source_location.account_id
 
                 sheet.write(row, 0, account.code if account else '')
-                sheet.write(row, 1, move.product_id.display_name or '')
+                sheet.write(row, 1, account.name if account else '')
                 sheet.write(row, 2, '')
                 sheet.write(row, 3, '')
-                sheet.write_number(row, 4, amount, fmt_amount)
-                sheet.write_number(row, 5, 0.0, fmt_amount)
+                sheet.write_number(row, 4, 0.0, fmt_amount)
+                sheet.write_number(row, 5, amount, fmt_amount)
                 sheet.write(row, 6, production.name or '')
-                sheet.write(row, 7, concepto)
+                sheet.write(row, 7, move.product_id.name or '')
                 sheet.write(row, 8, '')
-                sheet.write(row, 9, '')
+                sheet.write(row, 9,  account.segmento if account else '')
 
                 row += 1
                 found_lines += 1
@@ -88,13 +88,13 @@ class MrpPolizaExportWizard(models.TransientModel):
                 account = dest_location.account_id
 
                 sheet.write(row, 0, account.code if account else '')
-                sheet.write(row, 1, move.product_id.display_name or '')
+                sheet.write(row, 1, account.name if account else '')
                 sheet.write(row, 2, '')
                 sheet.write(row, 3, '')
-                sheet.write_number(row, 4, 0.0, fmt_amount)
-                sheet.write_number(row, 5, amount, fmt_amount)
+                sheet.write_number(row, 4, amount, fmt_amount)
+                sheet.write_number(row, 5, 0.0, fmt_amount)
                 sheet.write(row, 6, production.name or '')
-                sheet.write(row, 7, concepto)
+                sheet.write(row, 7, move.product_id.name or '')
                 sheet.write(row, 8, '')
                 sheet.write(row, 9, '')
 
