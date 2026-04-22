@@ -28,6 +28,7 @@ class MrpPolizaExportWizard(models.TransientModel):
 
         productions = self.env['mrp.production'].search([
             ('state', '=', 'done'),
+            ('location_src_id', 'in', self.location_ids.ids),
             ('date_finished', '>=', start_dt),
             ('date_finished', '<=', end_dt),
         ], order='date_finished, name')
