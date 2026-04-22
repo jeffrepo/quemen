@@ -25,13 +25,18 @@ class MrpPolizaExportWizard(models.TransientModel):
 
         start_dt = fields.Datetime.to_datetime(str(self.date_start) + ' 00:00:00')
         end_dt = fields.Datetime.to_datetime(str(self.date_end) + ' 23:59:59')
+        location_ids = self.location_ids.ids
 
-        productions = self.env['mrp.production'].search([
+        domain = [
             ('state', '=', 'done'),
-            ('location_src_id', 'in', self.location_ids.ids),
             ('date_finished', '>=', start_dt),
             ('date_finished', '<=', end_dt),
-        ], order='date_finished, name')
+        ]
+
+        if location_ids:
+            domain.append(('location_src_id', 'in', location_ids))
+
+        productions = self.env['mrp.production'].search(domain, order='date_finished, name')
 
         if not productions:
             raise UserError(_('No se encontraron órdenes de fabricación terminadas en el rango seleccionado.'))
@@ -55,77 +60,58 @@ class MrpPolizaExportWizard(models.TransientModel):
         found_lines = 0
 
         for production in productions:
-            concepto = production.picking_type_id.name or 'Fabricación'
-
-            # -------------------------------
-            # ABONOS: producto terminado
-            # -------------------------------
+            # -----------------------------
+            # 1. Construir líneas de abono
+            # -----------------------------
             abono_lines = []
             total_abono = 0.0
 
-            finished_moves = production.move_finished_ids.filtered(lambda m: m.state == 'done')
+            raw_moves = production.move_raw_ids.filtered(lambda m: m.state == 'done')
 
-            for move in finished_moves:
+            for move in raw_moves:
                 qty = self._get_qty(move)
-                if not qty:
-                    continue
-
                 cost = move.product_id.standard_price or 0.0
                 amount = qty * cost
+
                 if not amount:
                     continue
 
-                dest_location = move.location_dest_id
-
-                if self.location_ids and dest_location not in self.location_ids:
-                    continue
-
-                account = dest_location.account_id
+                source_location = move.location_id
+                account = source_location.account_id
 
                 abono_lines.append({
                     'cuenta': account.code if account else '',
-                    'nombre': move.product_id.display_name or '',
+                    'nombre': account.name if account else '',
                     'cargo': 0.0,
                     'abono': amount,
                     'referencia': production.name or '',
-                    'concepto': concepto,
+                    'concepto': move.product_id.name or '',
+                    'diario': '',
+                    'seg_neg': account.segmento if account and hasattr(account, 'segmento') else '',
                 })
+
                 total_abono += amount
 
             if not abono_lines:
                 continue
 
-            # -------------------------------
-            # CARGO: una sola línea = suma de abonos
-            # toma cuenta/nombre del primer componente
-            # -------------------------------
+            # -------------------------------------------
+            # 2. Construir línea única de cargo al inicio
+            #    Cargo = suma de todos los abonos
+            # -------------------------------------------
+            finished_move = production.move_finished_ids.filtered(lambda m: m.state == 'done')[:1]
+
             cargo_account = ''
-            cargo_name = production.product_id.display_name or ''
+            cargo_name = ''
+            cargo_seg_neg = ''
 
-            raw_moves = production.move_raw_ids.filtered(lambda m: m.state == 'done')
-            first_raw_move = False
-
-            for move in raw_moves:
-                qty = self._get_qty(move)
-                if not qty:
-                    continue
-
-                source_location = move.location_id
-                dest_location = move.location_dest_id
-
-                if self.location_ids and source_location not in self.location_ids and dest_location not in self.location_ids:
-                    continue
-
-                first_raw_move = move
-                break
-
-            if first_raw_move:
-                source_location = first_raw_move.location_id
-                account = source_location.account_id
+            if finished_move:
+                dest_location = finished_move.location_dest_id
+                account = dest_location.account_id
                 cargo_account = account.code if account else ''
-                cargo_name = first_raw_move.product_id.display_name or cargo_name
+                cargo_name = account.name if account else ''
+                cargo_seg_neg = account.segmento if account and hasattr(account, 'segmento') else ''
 
-            # Línea de cargo primero
             sheet.write(row, 0, cargo_account)
             sheet.write(row, 1, cargo_name)
             sheet.write(row, 2, '')
@@ -133,14 +119,16 @@ class MrpPolizaExportWizard(models.TransientModel):
             sheet.write_number(row, 4, total_abono, fmt_amount)
             sheet.write_number(row, 5, 0.0, fmt_amount)
             sheet.write(row, 6, production.name or '')
-            sheet.write(row, 7, concepto)
+            sheet.write(row, 7, production.product_id.name or '')
             sheet.write(row, 8, '')
-            sheet.write(row, 9, '')
+            sheet.write(row, 9, cargo_seg_neg)
 
             row += 1
             found_lines += 1
 
-            # Luego los abonos
+            # -----------------------------
+            # 3. Escribir los abonos debajo
+            # -----------------------------
             for line in abono_lines:
                 sheet.write(row, 0, line['cuenta'])
                 sheet.write(row, 1, line['nombre'])
@@ -150,8 +138,8 @@ class MrpPolizaExportWizard(models.TransientModel):
                 sheet.write_number(row, 5, line['abono'], fmt_amount)
                 sheet.write(row, 6, line['referencia'])
                 sheet.write(row, 7, line['concepto'])
-                sheet.write(row, 8, '')
-                sheet.write(row, 9, '')
+                sheet.write(row, 8, line['diario'])
+                sheet.write(row, 9, line['seg_neg'])
 
                 row += 1
                 found_lines += 1
