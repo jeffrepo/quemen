@@ -273,7 +273,7 @@
                     string="Crear Lotes"
                     class="oe_highlight"
                     type="object"
-                    invisible="state not in  ['despachado']"/>
+                    invisible="state not in  ['borrador']"/>
             <button name="confirm_out"
                     string="Despacho"
                     class="oe_highlight"
@@ -319,7 +319,7 @@
       <field name="name">quemen.op_lote.list</field>
       <field name="model">quemen.op_lote</field>
       <field name="arch" type="xml">
-        <list string="OP Lote">
+        <list string="OP Lote" default_order="name desc">
           <field name="name"/>
           <field name="date"/>
           <field name="date_mrp_production"/>

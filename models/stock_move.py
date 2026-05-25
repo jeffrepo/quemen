@@ -9,7 +9,26 @@ class StockMove(models.Model):
     _inherit = "stock.move"
 
     generar_nuevos_lotes = fields.Boolean(string="Generar nuevos lotes")
+    barcode = fields.Char('Código de barra')
+    cantidad_etiquetas = fields.Float('Cantidad etiquetas')
 
+    @api.onchange('barcode')
+    def _onchange_barcode(self):
+        for move in self:
+            if not move.barcode:
+                continue
+    
+            lot = self.env['stock.lot'].search([
+                ('name', '=', move.barcode),
+            ], limit=1)
+    
+            if not lot:
+                raise ValidationError(_("Código de barra inválido"))
+    
+            move.product_id = lot.product_id.id
+            move.product_uom = lot.product_id.uom_id.id
+            move.product_uom_qty = 1
+    
     def _actualizar_cantidades(self, cantidad):
         lot_ids = self.env["stock.lot"].search([("name","!=", "0000000"),("product_qty", ">", 0)])
         logging.warning(len(lot_ids))

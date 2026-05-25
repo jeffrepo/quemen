@@ -8,6 +8,7 @@
             <field name="arch" type="xml">
                 <field name="category_id" position="after">
                     <field name="location_dest_id"/>
+                    <field name="location_dest_id"/>
                 </field>    
             </field> 
         </record>

@@ -39,7 +39,7 @@
         'data/ir_sequence_data.xml',
         'data/cron_jobs.xml',
         # descomentar la linea de abajo 
-        # 'views/stock_lot_views.xml',
+        'views/stock_lot_views.xml',
         'views/quemen_views.xml',
         "views/inventory_xlsx_wizard_views.xml",
         'views/stock_location_views.xml',
@@ -71,7 +71,7 @@
         
         # 'views/stock_quant_views.xml',
         'views/pos_session_view.xml',
-        # 'views/res_partner_views.xml',
+        'views/res_partner_views.xml',
         'views/pos_config_view_quemen.xml',
         'wizard/reporte_entrega_valores_wizard.xml',
         # 'views/reloj_checador_wizard.xml',

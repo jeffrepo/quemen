@@ -226,6 +226,7 @@ class QuemenOpLote(models.Model):
         for lot in self:
             error_msg = ''
             if lot.product_ids:
+
                 tipo_operacion_id = self.env['stock.picking.type'].search([("name","=","Transitoria fabricacion")])
                 ubicacion_origen_id =  tipo_operacion_id.default_location_src_id.id
                 ubicacion_destino_id = tipo_operacion_id.default_location_dest_id.id
@@ -235,31 +236,48 @@ class QuemenOpLote(models.Model):
                     'location_dest_id': ubicacion_destino_id,
                     'move_type': 'direct',
                 }
+                envio_id = self.env['stock.picking'].create(envio)
+                info = self.env['report.quemen.reporte_explosion_insumos'].get_info(lot)[1]['mp']
+                for product in info:
+                    logging.warning("----PRODUCT")
+                    logging.warning(product)
+                    product_id = info[product]["product"]
+                    quantity = info[product]["quantity_exp"]
+                    move = {
+                        'product_id': product_id.id,
+                        #'name': mrp_line.product_id.name,
+                        'product_uom':product_id.uom_id.id,
+                        'location_id': ubicacion_origen_id,
+                        'product_uom_qty': quantity,
+                        'location_dest_id': ubicacion_destino_id,
+                        # 'lot_id': quant.lot_id.id,
+                        'picking_id': envio_id.id
+                    }
+                    move_id = self.env['stock.move'].create(move)
+                    move['move_id'] = move_id.id
+                    
                 logging.warning("envio")
                 logging.warning(envio)
                 logging.warning(tipo_operacion_id)
-                envio_id = self.env['stock.picking'].create(envio)
                 
-                for line in lot.product_ids:
-                    qty_bom = line.product_id.bom_ids[0].product_qty
-                    if line.product_id.bom_ids and line.product_id.bom_ids.bom_line_ids:
-                        for mrp_line in line.product_id.bom_ids[0].bom_line_ids:
+                
+                #for line in lot.product_ids:
+                #    qty_bom = line.product_id.bom_ids[0].product_qty
+                #    if line.product_id.bom_ids and line.product_id.bom_ids.bom_line_ids:
+                #        for mrp_line in line.product_id.bom_ids[0].bom_line_ids:
                             
-                            move = {
-                                'product_id': mrp_line.product_id.id,
-                                #'name': mrp_line.product_id.name,
-                                'product_uom': mrp_line.product_id.uom_id.id,
-                                'location_id': ubicacion_origen_id,
-                                'product_uom_qty': mrp_line.product_qty * qty_bom,
-                                'location_dest_id': ubicacion_destino_id,
+                #            move = {
+                #                'product_id': mrp_line.product_id.id,
+                #                #'name': mrp_line.product_id.name,
+                #               'product_uom': mrp_line.product_id.uom_id.id,
+                #                'location_id': ubicacion_origen_id,
+                 #               'product_uom_qty': mrp_line.product_qty * qty_bom,
+                  #              'location_dest_id': ubicacion_destino_id,
                                 # 'lot_id': quant.lot_id.id,
-                                'picking_id': envio_id.id
-                            }
-                            move_id = self.env['stock.move'].create(move)
-                            move['move_id'] = move_id.id
-                            #move['product_uom_qty'] = quant.quantity
-                   # move['lot_id'] = quant.lot_id.id
-                   
+                   #             'picking_id': envio_id.id
+                   #         }
+                    #        move_id = self.env['stock.move'].create(move)
+                     #       move['move_id'] = move_id.id
                 lot.despacho_id = envio_id.id
             lot.write({'state': "despachado"})
             
@@ -284,8 +302,8 @@ class QuemenOpLote(models.Model):
                         'product_qty': line.quantity * qty_bom,
                         'bom_id': line.product_id.bom_ids.id,
                         'origin': line.lot_id.name,
-                        'lot_producing_id': line.lot_barcode_id.id,
-                        'date_planned_start': date_planed_start,
+                        'lot_producing_ids': [line.lot_barcode_id.id],
+                        'date_start': date_planed_start,
                         'picking_type_id': line.product_id.bom_ids.picking_type_id.id,
                         'location_src_id': line.product_id.bom_ids.picking_type_id.default_location_src_id.id,
                         'location_dest_id': line.product_id.bom_ids.picking_type_id.default_location_dest_id.id
@@ -293,8 +311,8 @@ class QuemenOpLote(models.Model):
                     }
                     mrp_order_id = self.env['mrp.production'].create(mrp_order)
 
-                    mrp_order_id._onchange_move_raw()
-                    mrp_order_id._onchange_move_finished()
+                    mrp_order_id._compute_move_raw_ids()
+                    mrp_order_id._compute_move_finished_ids()
 
                     if mrp_order_id.product_tracking == 'serial' and float_compare(mrp_order_id.qty_producing, 1, precision_rounding=mrp_order_id.product_uom_id.rounding) == 1:
                         mrp_order_id.qty_producing = 1
@@ -304,11 +322,11 @@ class QuemenOpLote(models.Model):
                     for move in mrp_order_id.move_raw_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
                         rounding = move.product_uom.rounding
                         for move_line in move.move_line_ids:
-                            if move_line.product_uom_qty:
-                                move_line.qty_done = min(move_line.product_uom_qty, move_line.move_id.should_consume_qty)
-                            if float_compare(move.quantity_done, move.should_consume_qty, precision_rounding=rounding) >= 0:
+                            if move_line.quantity:
+                                move_line.qty_done = min(move_line.quantity, move_line.move_id.should_consume_qty)
+                            if float_compare(move.quantity, move.should_consume_qty, precision_rounding=rounding) >= 0:
                                 break
-                        if float_compare(move.product_uom_qty, move.quantity_done, precision_rounding=move.product_uom.rounding) == 1:
+                        if float_compare(move.quantity, move.quantity, precision_rounding=move.product_uom.rounding) == 1:
                             if move.has_tracking in ('serial', 'lot'):
                                 error_msg += "\n  - %s" % move.product_id.display_name
             lot.write({'state': "confirmado"})

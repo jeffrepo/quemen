@@ -27,18 +27,24 @@ class StockPicking(models.Model):
         for picking in self:
             if 'partner_id' in vals:
                 partner_id = self.env["res.partner"].search([("id", "=", vals["partner_id"])])
-                if partner_id.location_dest_id:
-                    vals['location_dest_id'] = partner_id.location_dest_id.id
+                logging.warning("partner_id")
+                logging.warning(partner_id)
+                if partner_id and partner_id.location_desti_id:
+                    vals['location_desti_id'] = partner_id.location_desti_id.id
         res = super(StockPicking, self).write(vals)
         return res
 
-    @api.model
-    def create(self, vals):
-        res = super(StockPicking, self).create(vals)
-        if res:
-            if res.picking_type_id and res.picking_type_id.picking_partner_id and res.picking_type_id.tipo_transporte:
-                res.write({'partner_id': res.picking_type_id.picking_partner_id.id})
-                res.write({'l10n_mx_edi_transport_type': res.picking_type_id.tipo_transporte})
+    @api.model_create_multi
+    def create(self, vals_list):
+        res = super().create(vals_list)
+        for picking in res:
+            vals_to_write = {}
+            if picking.picking_type_id.picking_partner_id:
+                vals_to_write['partner_id'] = picking.picking_type_id.picking_partner_id.id
+            if picking.picking_type_id.tipo_transporte:
+                vals_to_write['l10n_mx_edi_transport_type'] = picking.picking_type_id.tipo_transporte
+            if vals_to_write:
+                picking.write(vals_to_write)
         return res
 
     @api.depends('move_line_ids.state', 'move_line_ids.date', 'move_type')
@@ -58,7 +64,7 @@ class StockPicking(models.Model):
                     quant = StockQuant.search([('product_id', '=', linea.product_id.id), ('location_id', '=', self.location_id.id),("lot_id", "=", linea.lote_id.id)], limit=1)
                     existencia = 0
                     if quant:
-                        existencia = quant.available_quantity
+                        existencia = quant.quantity
 
                     quant_id = self.env["stock.quant"].with_context(inventory_mode=True).sudo().create({
                         'location_id': self.location_id.id,
@@ -66,7 +72,8 @@ class StockPicking(models.Model):
                         'lot_id': linea.lote_id.id,
                         'inventory_quantity': existencia-linea.cantidad,
                     }).action_apply_inventory()
-
+                    logging.warning("existencia")
+                    logging.warning(existencia)
                     if existencia > 0:
 
                         elaboration_date = datetime.fromisoformat(fields.Date.today().isoformat() + ' 06:00:00') + (relativedelta(days=1) if self.dia_congelamiento else relativedelta(days=0))
@@ -108,11 +115,11 @@ class StockPicking(models.Model):
             if self.note == "<p><br></p>":
               raise ValidationError("Favor de llenar las notas :@")
 
-        if self.picking_type_id.salida_traspaso==True:
-            if len(self.partner_id) == 0:
-                raise ValidationError("La dirección de entrega es requerida")
-            if self.partner_id.location_dest_id == False:
-                raise ValidationError("La Ubicacion de entrega dentro del contacto es requerida")
+        #if self.picking_type_id.salida_traspaso==True:
+        #    if len(self.partner_id) == 0:
+        #        raise ValidationError("La dirección de entrega es requerida")
+        #    if self.partner_id.location_dest_id == False:
+        #        raise ValidationError("La Ubicacion de entrega dentro del contacto es requerida")
 
         if self.picking_type_id.tipo_operacion_porcion_id:
             transferencia_id = self.producto_porciones()
@@ -120,6 +127,55 @@ class StockPicking(models.Model):
             if  transferencia_id:
                 transferencia_id.action_assign()
                 transferencia_id.button_validate()
+        for picking in self:
+            for move in picking.move_ids:
+                if not move.barcode:
+                    continue
+    
+                lot = self.env['stock.lot'].search([
+                    ('name', '=', move.barcode),
+                ], limit=1)
+    
+                if not lot:
+                    raise ValidationError(_("Código de barra inválido: %s") % move.barcode)
+    
+                product = lot.product_id
+    
+                quant = self.env['stock.quant'].search([
+                    ('product_id', '=', product.id),
+                    ('lot_id', '=', lot.id),
+                    ('location_id', 'child_of', picking.location_id.id),
+                    ('quantity', '>', 0),
+                ], limit=1)
+    
+                if not quant:
+                    raise ValidationError(_("No hay existencia disponible para el lote %s.") % lot.name)
+    
+                qty = move.quantity or move.product_uom_qty
+    
+                move.product_id = product.id
+                move.product_uom = product.uom_id.id
+                move.product_uom_qty = qty
+    
+                move.move_line_ids.unlink()
+    
+                qty_field = (
+                    'picked_quantity'
+                    if 'picked_quantity' in self.env['stock.move.line']._fields
+                    else 'quantity'
+                )
+    
+                self.env['stock.move.line'].create({
+                    'picking_id': picking.id,
+                    'move_id': move.id,
+                    'product_id': product.id,
+                    'product_uom_id': product.uom_id.id,
+                    'location_id': quant.location_id.id,
+                    'location_dest_id': picking.location_dest_id.id,
+                    'lot_id': lot.id,
+                    'quant_id': quant.id,
+                    qty_field: qty,
+                })
         res = super(StockPicking, self).button_validate()
         return res
 
@@ -458,7 +514,7 @@ class StockPicking(models.Model):
                                 # }
                                 move = {
                                     'product_id': quant.product_id.id,
-                                    'name': quant.product_id.name,
+                                    #'name': quant.product_id.name,
                                     'product_uom': quant.product_id.uom_id.id,
 
                                     'location_id': ubicacion_actual.id,
