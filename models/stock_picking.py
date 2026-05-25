@@ -29,8 +29,8 @@ class StockPicking(models.Model):
                 partner_id = self.env["res.partner"].search([("id", "=", vals["partner_id"])])
                 logging.warning("partner_id")
                 logging.warning(partner_id)
-                if partner_id and partner_id.location_desti_id:
-                    vals['location_desti_id'] = partner_id.location_desti_id.id
+                if partner_id and partner_id.location_dest_id:
+                    vals['location_dest_id'] = partner_id.location_dest_id.id
         res = super(StockPicking, self).write(vals)
         return res
 
