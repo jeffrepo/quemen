@@ -10,184 +10,316 @@ class ReporteCorteCajaCarta(models.AbstractModel):
 
     nombre_reporte=''
 
-    def datos_factura(self, docs):
-        pedidos_facturar =[]
-        pagos = {}
-        ids_pedidos = []
-        lineas_facturar = []
-        factura_id = False
-        lineas_facturar_dic = {}
-        pendiente_facturar = 0
+    def _pedidos_validos_corte(self, docs):
+        """Pedidos válidos de la sesión para corte/facturación."""
+        pedidos = self.env['pos.order']
         for sesion in docs:
-            if len(sesion.order_ids) > 0:
-                for pedido in sesion.order_ids:
-                    if pedido.state in ['done', 'paid','invoiced'] and pedido.amount_total > 0 and (pedido.is_refunded==False):
-                        pedidos_facturar.append(pedido)
-                        ids_pedidos.append(pedido.id)
-                        for linea in pedido.payment_ids:
-                            if linea.payment_method_id.id not in pagos:
+            pedidos |= sesion.order_ids.filtered(
+                lambda p: (
+                    p.invalido is False
+                    and p.state in ['done', 'paid', 'invoiced']
+                    and p.amount_total > 0
+                    and not p.is_refunded
+                )
+            )
+        return pedidos
 
-                                pagos[linea.payment_method_id.id] = {'diario': linea.payment_method_id.journal_id, 'cantidad': 0}
-                            pagos[linea.payment_method_id.id]['cantidad'] += linea.amount
-        producto_linea_factura = self.env['product.product'].search([('default_code','=','001')])
-        if pedidos_facturar:
-            for pedido in pedidos_facturar:
-                pendiente_facturar += pedido.amount_total
-                # descuento = 0
-                # precio_unitario = 0
-                impuesto_programa = False
-                producto_0_ids = False
-                producto_16_ids = False
-                total_descuento_0 = 0
-                impuesto_programa_0 = False
-                impuesto_programa_16 = False
-                impuesto_programa_ieps8 = False
-                total_descuento_16 = 0
-                pedido_impuesto = pedido.amount_tax
-                for linea in pedido.lines:
-                    if linea.price_subtotal_incl < 0 and linea.program_id:
-                        dominio = linea.program_id.rule_products_domain
-                        dominio = ast.literal_eval(dominio)
-                        #producto_ids = self.env['product.product'].search(dominio)
-                        producto_ids = []
-                        if linea.program_id.discount_specific_product_ids.ids:
-                            producto_ids = self.env['product.product'].search([('id','in', linea.program_id.discount_specific_product_ids.ids)])
-                        else:
-                            producto_ids = linea.program_id.discount_line_product_id
+    def _tax_key_from_pos_line(self, linea):
+        """Misma llave fiscal usada por la factura global: impuestos reales de la línea."""
+        taxes = linea.tax_ids_after_fiscal_position
+        if not taxes:
+            taxes = linea.product_id.taxes_id
+        return tuple(sorted(taxes.ids))
 
-                        logging.warning("****************************")
-                        logging.warning(producto_ids[0].name)
-                        logging.warning(producto_ids[0].taxes_id)
-                        tax_names_producto = producto_ids[0].taxes_id.mapped('name')
+    def _preparar_lineas_global_simulada(self, docs, pedidos=None):
+        """
+        Prepara líneas fiscales simuladas con la misma lógica conceptual de
+        pos_session.generar_factura_global:
+        - líneas positivas forman la base;
+        - líneas negativas se convierten en descuento;
+        - se agrupa por pedido + grupo de impuestos;
+        - no se generan líneas negativas.
+        """
+        lineas_facturar_dic = {}
 
-                        if "IVA(16%) VENTAS" in tax_names_producto:
-                            impuesto_programa_16 = "IVA(16%) VENTAS"
-                            total_descuento_16 += (linea.price_subtotal_incl * -1)
-                            producto_16_ids = self.env['product.product'].search(dominio)
-                            producto_16_ids += linea.program_id.discount_specific_product_ids
-                        else:
-                            impuesto_programa_0 = "IVA(0%) VENTAS"
-                            total_descuento_0 += (linea.price_subtotal_incl * -1)
-                            producto_0_ids = self.env['product.product'].search(dominio)
-                            producto_0_ids += linea.program_id.discount_specific_product_ids
+        if pedidos is None:
+            pedidos = self._pedidos_validos_corte(docs)
 
-                        if any('IEPS' in name for name in tax_names_producto):
-                            impuesto_programa_ieps8 = True
-                        # if producto_ids[0].taxes_id[0].name == "IVA(16%) VENTAS":
-                        #     impuesto_programa_16 =  "IVA(16%) VENTAS"
-                        #     total_descuento_16 += (linea.price_subtotal_incl*-1)
-                        #     producto_16_ids = self.env['product.product'].search(dominio)
-                        #     producto_16_ids += linea.program_id.discount_specific_product_ids
-                        # else:
-                        #     impuesto_programa_0 = "IVA(0%) VENTAS"
-                        #     total_descuento_0 += (linea.price_subtotal_incl*-1)
-                        #     producto_0_ids = self.env['product.product'].search(dominio)
-                        #     producto_0_ids += linea.program_id.discount_specific_product_ids
-                        #
-                        # if len(producto_ids[0].taxes_id) > 1:
-                        #     if producto_ids[0].taxes_id[1].name == "IEPS(8%) VENTAS":
-                        #         impuesto_programa_ieps8 = True
+        if not pedidos:
+            return lineas_facturar_dic
 
-                for linea in pedido.lines:
-                    #llave = str(linea.order_id.name)+str(linea.tax_ids_after_fiscal_position[0].name)
-                    tax_key = '-'.join(map(str, sorted(linea.tax_ids_after_fiscal_position.ids)))
-                    llave = '%s-%s' % (linea.order_id.name, tax_key)
-                    if linea.price_subtotal_incl > 0:
-                        tax_names = linea.tax_ids_after_fiscal_position.mapped('name')
-                        tiene_iva_0 = "IVA(0%) VENTAS" in tax_names
-                        tiene_iva_16 = "IVA(16%) VENTAS" in tax_names
-                        tiene_ieps = any('IEPS' in name for name in tax_names)
-                        if llave not in lineas_facturar_dic:
-                            linea_0 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(0%) VENTAS")
-                            linea_16 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(16%) VENTAS")
+        sesion_base = docs[0] if len(docs) else False
+        currency = (
+            sesion_base.company_id.currency_id
+            if sesion_base
+            else self.env.company.currency_id
+        )
 
-                            # Si la promoción tiene IEPS y este producto aplica IEPS, añadirlo.
-                            if impuesto_programa_ieps8 and any('IEPS' in t.name for t in linea.product_id.taxes_id):
-                                tax_ids = [(6, 0, linea.product_id.taxes_id.ids)]
-                            else:
-                                # Usar los impuestos reales de la línea
-                                tax_ids = [(6, 0, linea.tax_ids_after_fiscal_position.ids)]
-                            # linea_0 = True if linea.tax_ids_after_fiscal_position[0].name == "IVA(0%) VENTAS" else False
-                            # linea_16 = True if linea.tax_ids_after_fiscal_position[0].name == "IVA(16%) VENTAS" else False
-                            # tax_ids = [1,12] if linea_0 and impuesto_programa_ieps8 else False
-                            linea_factura = {
-                                'product_id': producto_linea_factura.id,
-                                'quantity': 1,
-                                'discount': 0,
-                                'price_unit': 0,
-                                'name': pedido.name,
-                                'tax_ids': tax_ids,
-                                'product_uom_id': producto_linea_factura.uom_id.id,
-                                'total_descuento_0': total_descuento_0,
-                                'total_descuento_16': total_descuento_16,
-                                'linea_0': linea_0,
-                                'linea_16': linea_16,
-                            }
-                            lineas_facturar_dic[llave] = linea_factura
-                        if (
-                            impuesto_programa_0
-                            and producto_0_ids
-                            and linea.product_id.id in producto_0_ids.ids
-                            and tiene_iva_0
-                        ):
-                            lineas_facturar_dic[llave]['price_unit'] += linea.price_subtotal_incl
-                            if lineas_facturar_dic[llave]['tax_ids'] == False:
-                                lineas_facturar_dic[llave]['tax_ids'] = [(6, 0, linea.product_id.taxes_id.ids)]
-                        elif (
-                            impuesto_programa_16
-                            and producto_16_ids
-                            and linea.product_id.id in producto_16_ids.ids
-                            and tiene_iva_16
-                        ):
-                            lineas_facturar_dic[llave]['price_unit'] += linea.price_subtotal_incl
-                            if lineas_facturar_dic[llave]['tax_ids'] == False:
-                                lineas_facturar_dic[llave]['tax_ids'] = [(6, 0, linea.tax_ids_after_fiscal_position.ids)]
-                        else:
-                            lineas_facturar_dic[llave]['price_unit'] += linea.price_subtotal_incl
-                            if lineas_facturar_dic[llave]['tax_ids'] == False:
-                                lineas_facturar_dic[llave]['tax_ids'] = [(6, 0, linea.product_id.taxes_id.ids)]
-                            if total_descuento_0 == 0:
-                                if 'total_descuento_0' in lineas_facturar_dic[llave]:
-                                    del lineas_facturar_dic[llave]['total_descuento_0']
-                            else:
-                                #if linea.tax_ids_after_fiscal_position[0].name != impuesto_programa_0:
-                                if not tiene_iva_0:
-                                    if 'total_descuento_0' in lineas_facturar_dic[llave]:
-                                        del lineas_facturar_dic[llave]['total_descuento_0']
-                                    if total_descuento_16 == 0:
-                                        if 'total_descuento_16' in lineas_facturar_dic[llave]:
-                                            del lineas_facturar_dic[llave]['total_descuento_16']
+        producto_linea_factura = self.env['product.product'].search([
+            ('default_code', '=', '001')
+        ], limit=1)
 
-                            if total_descuento_16 == 0:
-                                    if 'total_descuento_16' in lineas_facturar_dic[llave]:
-                                        del lineas_facturar_dic[llave]['total_descuento_16']
+        if not producto_linea_factura:
+            raise ValidationError(_('No se encontró el producto genérico de facturación con código interno 001.'))
 
-            for ticket in lineas_facturar_dic:
-                if 'total_descuento_0' in lineas_facturar_dic[ticket] and lineas_facturar_dic[ticket]['total_descuento_0'] > 0 and lineas_facturar_dic[ticket]['linea_0']:
-                    precio_unitario = lineas_facturar_dic[ticket]['price_unit']
-                    precio_con_descuento = 0
-                    precio_con_descuento = lineas_facturar_dic[ticket]['price_unit'] - lineas_facturar_dic[ticket]['total_descuento_0']
-                    descuento = ((precio_unitario - precio_con_descuento) / precio_unitario)*100
-                    lineas_facturar_dic[ticket]['discount'] = descuento
-                    del lineas_facturar_dic[ticket]['total_descuento_0']
-                if 'total_descuento_16' in lineas_facturar_dic[ticket] and lineas_facturar_dic[ticket]['total_descuento_16'] > 0 and lineas_facturar_dic[ticket]['linea_16']:
-                    precio_unitario = lineas_facturar_dic[ticket]['price_unit']
-                    precio_con_descuento = 0
-                    precio_con_descuento = lineas_facturar_dic[ticket]['price_unit'] - lineas_facturar_dic[ticket]['total_descuento_16']
-                    descuento = ((precio_unitario - precio_con_descuento) / precio_unitario)*100
-                    lineas_facturar_dic[ticket]['discount'] = descuento
-                    del lineas_facturar_dic[ticket]['total_descuento_16']
+        for pedido in pedidos:
+            positivos = {}
+            descuentos = {}
 
-                if 'total_descuento_16' in lineas_facturar_dic[ticket]:
-                    del lineas_facturar_dic[ticket]['total_descuento_16']
-                if 'total_descuento_0' in lineas_facturar_dic[ticket]:
-                    del lineas_facturar_dic[ticket]['total_descuento_0']
+            for linea in pedido.lines:
+                monto = currency.round(linea.price_subtotal_incl or 0.0)
+                if abs(monto) < currency.rounding:
+                    continue
 
-                del lineas_facturar_dic[ticket]['linea_0']
-                del lineas_facturar_dic[ticket]['linea_16']
-        logging.warning("lineas_facturar_dic")
-        logging.warning(lineas_facturar_dic)
+                tax_key = self._tax_key_from_pos_line(linea)
+
+                if monto > 0:
+                    positivos[tax_key] = positivos.get(tax_key, 0.0) + monto
+                elif monto < 0:
+                    descuentos[tax_key] = descuentos.get(tax_key, 0.0) + abs(monto)
+
+            if not positivos:
+                continue
+
+            grupos = {}
+            for tax_key, monto_positivo in positivos.items():
+                grupos[tax_key] = {
+                    'pedido': pedido.name,
+                    'tax_ids': list(tax_key),
+                    'positivo': currency.round(monto_positivo),
+                    'descuento': 0.0,
+                }
+
+            descuento_sin_grupo = 0.0
+            for tax_key, monto_descuento in descuentos.items():
+                monto_descuento = currency.round(monto_descuento)
+                if tax_key in grupos:
+                    grupos[tax_key]['descuento'] += monto_descuento
+                else:
+                    descuento_sin_grupo += monto_descuento
+
+            if abs(descuento_sin_grupo) >= currency.rounding:
+                total_positivo = sum(g['positivo'] for g in grupos.values())
+                if abs(total_positivo) < currency.rounding:
+                    continue
+
+                grupos_items = list(grupos.items())
+                descuento_asignado = 0.0
+
+                for index, (tax_key, grupo) in enumerate(grupos_items):
+                    if index == len(grupos_items) - 1:
+                        monto_asignar = descuento_sin_grupo - descuento_asignado
+                    else:
+                        monto_asignar = currency.round(
+                            descuento_sin_grupo * grupo['positivo'] / total_positivo
+                        )
+                        descuento_asignado += monto_asignar
+
+                    grupo['descuento'] += monto_asignar
+
+            for tax_key, grupo in grupos.items():
+                positivo = currency.round(grupo['positivo'])
+                descuento_monto = currency.round(grupo['descuento'])
+
+                # Evitar descuentos mayores al 100% para no generar líneas negativas.
+                if descuento_monto > positivo:
+                    raise ValidationError(_(
+                        'El pedido %s tiene un descuento mayor que su base positiva '
+                        'en un grupo de impuestos. Base: %.2f, descuento: %.2f.'
+                    ) % (pedido.name, positivo, descuento_monto))
+
+                neto = currency.round(positivo - descuento_monto)
+                if neto <= 0:
+                    continue
+
+                descuento_pct = 0.0
+                if descuento_monto:
+                    descuento_pct = (descuento_monto / positivo) * 100.0
+
+                llave = '%s-%s' % (pedido.name, '-'.join(map(str, tax_key)))
+                lineas_facturar_dic[llave] = {
+                    'product_id': producto_linea_factura.id,
+                    'quantity': 1,
+                    'discount': round(descuento_pct, 6),
+                    'price_unit': positivo,
+                    'name': pedido.name,
+                    'tax_ids': [(6, 0, grupo['tax_ids'])],
+                    'product_uom_id': producto_linea_factura.uom_id.id,
+                    'origen': 'global_simulada',
+                }
+
         return lineas_facturar_dic
+
+    def datos_factura(self, docs):
+        """
+        Compatibilidad con el reporte anterior.
+        Ahora devuelve únicamente líneas simuladas con la lógica de factura global.
+        """
+        return self._preparar_lineas_global_simulada(docs)
+
+    def _normalizar_tax_ids(self, linea):
+        tax_ids = []
+        if linea.get('tax_ids'):
+            if isinstance(linea['tax_ids'], (list, tuple)):
+                if linea['tax_ids'] and isinstance(linea['tax_ids'][0], (list, tuple)):
+                    tax_ids = linea['tax_ids'][0][2]
+                else:
+                    tax_ids = list(linea['tax_ids'])
+            else:
+                tax_ids = [linea['tax_ids']]
+        return tax_ids
+
+    def _acumular_linea_en_corte(self, linea, ventas_sesion, totales_ventas_sesion, currency):
+        """
+        Acumula una línea estilo factura en ventas_sesion/totales_ventas_sesion.
+        Las columnas de ventas e impuestos muestran importes antes de descuento.
+        Las columnas de descuento muestran el efecto del descuento.
+        IEPS neto = IEPS 8% - Desct IEPS 8%.
+        """
+        ticket_ref = linea['name']
+
+        tax_ids = self._normalizar_tax_ids(linea)
+        taxes = self.env['account.tax'].browse(tax_ids) if tax_ids else False
+
+        discount = linea.get('discount', 0.0) or 0.0
+        price_unit = linea.get('price_unit', 0.0) or 0.0
+        qty = linea.get('quantity', 1.0) or 1.0
+        price_unit_desc = price_unit * (1 - discount / 100.0)
+        product = self.env['product.product'].browse(linea['product_id'])
+
+        def _compute(price_unit_):
+            if not taxes:
+                total = price_unit_ * qty
+                return {
+                    'total_excluded': total,
+                    'total_included': total,
+                    'taxes': [],
+                }
+            return taxes.compute_all(
+                price_unit_,
+                currency,
+                qty,
+                product=product,
+                partner=False,
+            )
+
+        res_before = _compute(price_unit)
+        res_after = _compute(price_unit_desc)
+
+        def _split(res):
+            base0 = sum(t['base'] for t in res['taxes'] if '0%' in t['name'])
+            base16 = sum(t['base'] for t in res['taxes'] if '16%' in t['name'])
+            iva = sum(t['amount'] for t in res['taxes'] if 'IVA' in t['name'])
+            ieps = sum(t['amount'] for t in res['taxes'] if 'IEPS' in t['name'])
+            return base0, base16, iva, ieps, res['total_excluded'], res['total_included']
+
+        b0_before, b16_before, iva_before, ieps_before, _, _ = _split(res_before)
+        b0_after, b16_after, iva_after, ieps_after, _, total_after = _split(res_after)
+
+        ventas_sin_iva = b0_before
+        ventas_iva = b16_before
+        ieps8 = ieps_before
+        iva = iva_after
+        total = total_after
+
+        descuento_sin_iva = max(b0_before - b0_after, 0.0)
+        descuento_base16 = max(b16_before - b16_after, 0.0)
+        descuento_ieps8 = max(ieps_before - ieps_after, 0.0)
+        descuento_iva_impuesto = max(iva_before - iva_after, 0.0)
+
+        descuento_total = (
+            descuento_sin_iva +
+            descuento_base16 +
+            descuento_ieps8 +
+            descuento_iva_impuesto
+        )
+
+        if ticket_ref not in ventas_sesion:
+            ventas_sesion[ticket_ref] = {
+                'venta': ticket_ref,
+                'ventas_sin_iva': 0.0,
+                'descuento_sin_iva': 0.0,
+                'ventas_iva': 0.0,
+                'descuento_iva': 0.0,
+                'ieps8': 0.0,
+                'descuento_ieps8': 0.0,
+                'descuento': 0.0,
+                'iva': 0.0,
+                'total': 0.0,
+                'fp': 'M',
+                'e': 0,
+            }
+
+        ventas_sesion[ticket_ref]['ventas_sin_iva'] += ventas_sin_iva
+        ventas_sesion[ticket_ref]['descuento_sin_iva'] += descuento_sin_iva
+        ventas_sesion[ticket_ref]['ventas_iva'] += ventas_iva
+        ventas_sesion[ticket_ref]['descuento_iva'] += descuento_base16
+        ventas_sesion[ticket_ref]['ieps8'] += ieps8
+        ventas_sesion[ticket_ref]['descuento_ieps8'] += descuento_ieps8
+        ventas_sesion[ticket_ref]['descuento'] += descuento_total
+        ventas_sesion[ticket_ref]['iva'] += iva
+        ventas_sesion[ticket_ref]['total'] += total
+
+        totales_ventas_sesion['ventas_sin_iva'] += ventas_sin_iva
+        totales_ventas_sesion['descuento_sin_iva'] += descuento_sin_iva
+        totales_ventas_sesion['ventas_iva'] += ventas_iva
+        totales_ventas_sesion['descuento_iva'] += descuento_base16
+        totales_ventas_sesion['ieps8'] += ieps8
+        totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
+        totales_ventas_sesion['descuento'] += descuento_total
+        totales_ventas_sesion['iva'] += iva
+        totales_ventas_sesion['total'] += total
+
+    def _acumular_facturas_individuales_en_corte(self, pedidos, ventas_sesion, totales_ventas_sesion, currency):
+        """
+        Para pedidos ya facturados fuera de la global, usa las líneas reales de su factura.
+        Así el corte suma: facturas individuales reales + global simulada.
+        """
+        producto_generico = self.env['product.product'].search([
+            ('default_code', '=', '001')
+        ], limit=1)
+
+        facturas_procesadas = self.env['account.move']
+
+        for pedido in pedidos:
+            factura = pedido.account_move
+            if not factura or factura.state != 'posted' or factura.move_type != 'out_invoice':
+                continue
+
+            facturas_procesadas |= factura
+
+            lineas_reales = factura.invoice_line_ids.filtered(
+                lambda l: not l.display_type and l.product_id
+            )
+
+            for linea_factura in lineas_reales:
+                linea = {
+                    'product_id': linea_factura.product_id.id or producto_generico.id,
+                    'quantity': linea_factura.quantity or 1.0,
+                    'discount': linea_factura.discount or 0.0,
+                    'price_unit': linea_factura.price_unit or 0.0,
+                    'name': pedido.name,
+                    'tax_ids': [(6, 0, linea_factura.tax_ids.ids)],
+                    'product_uom_id': linea_factura.product_uom_id.id if linea_factura.product_uom_id else False,
+                    'origen': 'factura_individual',
+                }
+                self._acumular_linea_en_corte(
+                    linea,
+                    ventas_sesion,
+                    totales_ventas_sesion,
+                    currency,
+                )
+
+        return facturas_procesadas
+
+    def _calcular_ieps_facturas(self, facturas):
+        ieps = 0.0
+        for factura in facturas:
+            for linea in factura.line_ids.filtered(
+                lambda l: l.tax_line_id and 'IEPS' in l.tax_line_id.name
+            ):
+                ieps += abs(linea.balance)
+        return ieps
 
     def sesiones(self, docs):
         listado_productos = []
@@ -254,267 +386,67 @@ class ReporteCorteCajaCarta(models.AbstractModel):
         cierre_efectivo = docs.cash_register_balance_end_real
         retiro_corte_previo = {}
 
-        #SOLO OBTENEMOS INFORMACION DE PEDIDOS FACTURADOS
-                    # ventas_sesion[venta_nombre] = {'venta': venta_nombre,'ventas_sin_iva': 0, 'descuento_sin_iva': 0, 'ventas_iva': 0, 'descuento_iva': 0, 'ieps8': 0, 'descuento_ieps8':0 ,'descuento': 0, 'iva': 0, 'total': 0, 'fp': fp, 'e':0}
-        lineas_facturar_dic = self.datos_factura(docs)
-
+        # ----------------------------------------------------------------------
+        # Cálculo fiscal del corte:
+        # 1) Pedidos ya facturados individualmente: se usan sus facturas reales.
+        # 2) Pedidos sin factura individual: se simula la futura factura global
+        #    con la misma lógica de generar_factura_global.
+        # ----------------------------------------------------------------------
         ventas_sesion = {}
         totales_ventas_sesion = {
-            'ventas_sin_iva': 0, 'descuento_sin_iva': 0,
-            'ventas_iva': 0, 'descuento_iva': 0,
-            'ieps8': 0, 'descuento_ieps8': 0,
-            'descuento': 0, 'iva': 0, 'total': 0
+            'ventas_sin_iva': 0.0,
+            'descuento_sin_iva': 0.0,
+            'ventas_iva': 0.0,
+            'descuento_iva': 0.0,
+            'ieps8': 0.0,
+            'descuento_ieps8': 0.0,
+            'descuento': 0.0,
+            'iva': 0.0,
+            'total': 0.0,
         }
+
         currency = docs.currency_id or self.env.company.currency_id
 
+        pedidos_corte = self._pedidos_validos_corte(docs)
+        pedidos_facturados_individuales = pedidos_corte.filtered(lambda p: p.account_move)
+        pedidos_para_global = pedidos_corte.filtered(lambda p: not p.account_move)
+
+        # Facturas individuales existentes.
+        facturas_individuales = self._acumular_facturas_individuales_en_corte(
+            pedidos_facturados_individuales,
+            ventas_sesion,
+            totales_ventas_sesion,
+            currency,
+        )
+
+        # Futura factura global simulada.
+        lineas_facturar_dic = self._preparar_lineas_global_simulada(
+            docs,
+            pedidos=pedidos_para_global,
+        )
+
         for llave, linea in lineas_facturar_dic.items():
-            ticket_ref = linea['name']   # referencia al pedido/ticket
-
-            # --- normalizar tax_ids ---
-            tax_ids = []
-            logging.warning('Linea taxids')
-            logging.warning(linea['tax_ids'])
-            if linea['tax_ids']:
-                if isinstance(linea['tax_ids'], (list, tuple)):
-                    if isinstance(linea['tax_ids'][0], (list, tuple)):
-                        tax_ids = linea['tax_ids'][0][2]  # [(6, 0, [ids])]
-                    else:
-                        tax_ids = linea['tax_ids']        # lista simple de ints
-                else:
-                    tax_ids = [linea['tax_ids']]          # int único
-
-            taxes = self.env['account.tax'].browse(tax_ids) if tax_ids else False
-
-            # --- precio unitario con descuento aplicado ---
-            discount = linea.get('discount', 0.0) or 0.0
-            price_unit_desc = linea['price_unit'] * (1 - (linea.get('discount', 0.0) or 0.0) / 100.0)
-
-
-            # --- compute_all con precio con descuento ---
-            taxes_res = taxes.compute_all(
-                price_unit_desc,
+            self._acumular_linea_en_corte(
+                linea,
+                ventas_sesion,
+                totales_ventas_sesion,
                 currency,
-                linea['quantity'],
-                product=self.env['product.product'].browse(linea['product_id']),
-                partner=False,
-            ) if taxes else {'total_excluded': 0, 'total_included': 0, 'taxes': []}
-
-            ventas_sin_iva = sum(t['base'] for t in taxes_res['taxes'] if '0%' in t['name'])
-            ventas_iva = sum(t['base'] for t in taxes_res['taxes'] if '16%' in t['name'])
-            ieps8 = sum(t['amount'] for t in taxes_res['taxes'] if 'IEPS' in t['name'])
-            iva = sum(t['amount'] for t in taxes_res['taxes'] if 'IVA' in t['name'])
-            total = taxes_res['total_included']
-
-            # --- crear la estructura del ticket si no existe ---
-
-
-            # --- calcular descuentos manuales ---
-            descuento_total = (linea['price_unit'] * linea['quantity']) - (price_unit_desc * linea['quantity'])
-
-            # Inicializamos columnas
-            ventas_sin_iva = 0.0
-            ventas_iva = 0.0
-            ieps8 = 0.0
-            iva = 0.0
-            descuento_sin_iva = 0.0
-            descuento_iva = 0.0
-            descuento_ieps8 = 0.0
-            subtotal_neto = taxes_res['total_excluded']
-            total = taxes_res['total_included']
-            # Detectar si hay IEPS en la línea
-            tiene_ieps = any('IEPS' in t['name'] for t in taxes_res['taxes'])
-
-            # --- normalizar tax_ids de la línea (diccionario proveniente de datos_factura) ---
-            tax_ids = []
-            if linea.get('tax_ids'):
-                if isinstance(linea['tax_ids'], (list, tuple)):
-                    if linea['tax_ids'] and isinstance(linea['tax_ids'][0], (list, tuple)):
-                        # formato Odoo M2M: [(6, 0, [ids])]
-                        tax_ids = linea['tax_ids'][0][2]
-                    else:
-                        # lista simple de ids
-                        tax_ids = list(linea['tax_ids'])
-                else:
-                    # id único
-                    tax_ids = [linea['tax_ids']]
-
-            taxes = self.env['account.tax'].browse(tax_ids) if tax_ids else False
-
-            # --- precio con descuento aplicado ---
-            discount = linea.get('discount', 0.0) or 0.0
-            price_unit = linea['price_unit']
-            qty = linea['quantity']
-            price_unit_desc = price_unit * (1 - discount / 100.0)
-
-            product = self.env['product.product'].browse(linea['product_id'])
-            logging.warning("producto")
-            logging.warning(product)
-            logging.warning(product.name)
-            def _compute(price_unit_):
-                if not taxes:
-                    return {
-                        'total_excluded': price_unit_ * qty,
-                        'total_included': price_unit_ * qty,
-                        'taxes': []
-                    }
-                return taxes.compute_all(
-                    price_unit_,
-                    currency,
-                    qty,
-                    product=product,
-                    partner=False,
-                )
-
-            # --- calcular ANTES y DESPUÉS del descuento ---
-            res_before = _compute(price_unit)        # antes de descuento
-            logging.warning('res_before: ' + str(res_before) )
-            res_after  = _compute(price_unit_desc)   # después de descuento
-            logging.warning('res_after: ' + str(res_after) )
-
-
-            # --- extraer componentes por impuesto ---
-            def _split(res):
-                base0 = sum(t['base']   for t in res['taxes'] if '0%'   in t['name'])
-                base16= sum(t['base']   for t in res['taxes'] if '16%'  in t['name'])
-                iva   = sum(t['amount'] for t in res['taxes'] if 'IVA'  in t['name'])
-                ieps  = sum(t['amount'] for t in res['taxes'] if 'IEPS' in t['name'])
-                return base0, base16, iva, ieps, res['total_excluded'], res['total_included']
-
-            b0_before, b16_before, iva_before, ieps_before, _, tot_inc_before = _split(res_before)
-            b0_after,  b16_after,  iva_after,  ieps_after,  _, tot_inc_after  = _split(res_after)
-
-
-            # --- VENTAS (valores netos después del descuento) ---
-            # ventas_sin_iva = b0_after
-            # ventas_iva     = b16_after
-            # ieps8          = ieps_after
-            # iva            = iva_after
-            # total          = tot_inc_after
-            # --- VENTAS / IMPUESTOS BRUTOS Y NETOS ---
-            # Las columnas de venta e impuestos deben mostrar el importe bruto.
-            # Las columnas de descuento muestran cuánto se descontó.
-            # Para conciliación fiscal se usa: IEPS neto = IEPS 8% - Desct IEPS 8%
-
-            ventas_sin_iva = b0_before
-            ventas_iva     = b16_before
-            ieps8          = ieps_before
-            iva            = iva_after
-            total          = tot_inc_after
-
-            # --- Descuentos manuales (según Excel) ---
-            descuento_base0  = b0_before - b0_after
-            descuento_base16 = b16_before - b16_after
-
-            descuento_sin_iva = 0.0
-            descuento_iva     = 0.0
-            descuento_ieps8   = 0.0
-
-            tiene_ieps = any('IEPS' in t['name'] for t in res_before['taxes'])
-            logging.warning("tiene IEPS")
-            logging.warning(ticket_ref)
-            logging.warning(res_before)
-            logging.warning(tiene_ieps)
-            if ticket_ref not in ventas_sesion:
-                ventas_sesion[ticket_ref] = {
-                    'venta': ticket_ref,
-                    'ventas_sin_iva': 0, 'descuento_sin_iva': 0,
-                    'ventas_iva': 0, 'descuento_iva': 0,
-                    'ieps8': 0, 'descuento_ieps8': 0,
-                    'descuento': 0, 'iva': 0, 'total': 0,
-                    'fp': 'M', 'e': 0
-                }
-
-
-            # Caso: 0% + IEPS
-            # if descuento_base0 > 0 and tiene_ieps:
-            #     descuento_sin_iva = descuento_base0
-            #     descuento_ieps8   = descuento_base0 * 0.08
-            #
-            # # Caso: 16% + IEPS
-            # elif descuento_base16 > 0 and tiene_ieps:
-            #     descuento_sin_iva = 0.0
-            #     descuento_base = descuento_base16
-            #     descuento_ieps8 = descuento_base * 0.08
-            #     descuento_iva   = (descuento_base + descuento_ieps8) * 0.16
-            #
-            # # Caso: solo 16%
-            # elif descuento_base16 > 0 and not tiene_ieps:
-            #     descuento_iva = descuento_base16 * 0.16
-            #
-            # # Caso: solo 0%
-            # elif descuento_base0 > 0 and not tiene_ieps:
-            #     descuento_sin_iva = descuento_base0
-            #
-            # # Total descuento
-            # descuento_total = descuento_sin_iva + descuento_iva + descuento_ieps8
-
-            # Descuentos reales calculados con compute_all()
-            # res_before = impuestos antes del descuento
-            # res_after  = impuestos después del descuento
-
-            descuento_sin_iva = max(b0_before - b0_after, 0.0)
-
-            # Esta variable representa la BASE gravada 16% descontada.
-            # Se usa para la columna "Desct 16%".
-            descuento_base16 = max(b16_before - b16_after, 0.0)
-
-            # Estos son impuestos descontados reales.
-            # Se usan para cuadrar contra factura.
-            descuento_ieps8 = max(ieps_before - ieps_after, 0.0)
-            if descuento_ieps8:
-                logging.warning(
-                    "DESCUENTO IEPS | ticket=%s | price_unit=%s | discount=%s | ieps_before=%s | ieps_after=%s | descuento_ieps8=%s",
-                    ticket_ref,
-                    price_unit,
-                    discount,
-                    ieps_before,
-                    ieps_after,
-                    descuento_ieps8,
-                )
-            descuento_iva_impuesto = max(iva_before - iva_after, 0.0)
-
-            # Total descuento fiscal completo:
-            # base 0% + base 16% + IEPS descontado + IVA descontado
-            descuento_total = (
-                descuento_sin_iva +
-                descuento_base16 +
-                descuento_ieps8 +
-                descuento_iva_impuesto
             )
 
-            # Guardar descuentos en el diccionario del ticket
-            # ventas_sesion[ticket_ref]['descuento_sin_iva'] += descuento_sin_iva
-            # ventas_sesion[ticket_ref]['descuento_iva'] += descuento_iva
-            # ventas_sesion[ticket_ref]['descuento_ieps8'] += descuento_ieps8
-            # ventas_sesion[ticket_ref]['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
-            ventas_sesion[ticket_ref]['descuento_sin_iva'] += descuento_sin_iva
-            ventas_sesion[ticket_ref]['descuento_iva'] += descuento_base16
-            ventas_sesion[ticket_ref]['descuento_ieps8'] += descuento_ieps8
-            ventas_sesion[ticket_ref]['descuento'] += descuento_total
-            # --- acumular en el ticket ---
-            ventas_sesion[ticket_ref]['ventas_sin_iva'] += ventas_sin_iva
-            ventas_sesion[ticket_ref]['ventas_iva'] += ventas_iva
-            ventas_sesion[ticket_ref]['ieps8'] += ieps8
-            ventas_sesion[ticket_ref]['iva'] += iva
-            ventas_sesion[ticket_ref]['total'] += total
+        ieps_facturas_individuales = self._calcular_ieps_facturas(facturas_individuales)
+        ieps_global_simulado_neto = (
+            totales_ventas_sesion['ieps8'] -
+            totales_ventas_sesion['descuento_ieps8'] -
+            ieps_facturas_individuales
+        )
+        ieps_total_fiscal = (
+            ieps_facturas_individuales +
+            ieps_global_simulado_neto
+        )
 
-            # También acumular en los totales generales
-            # totales_ventas_sesion['descuento_sin_iva'] += descuento_sin_iva
-            # totales_ventas_sesion['descuento_iva'] += descuento_iva
-            # totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
-            # totales_ventas_sesion['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
-            totales_ventas_sesion['descuento_sin_iva'] += descuento_sin_iva
-            totales_ventas_sesion['descuento_iva'] += descuento_base16
-            totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
-            totales_ventas_sesion['descuento'] += descuento_total
-
-            # --- acumular en los totales generales ---
-            totales_ventas_sesion['ventas_sin_iva'] += ventas_sin_iva
-            totales_ventas_sesion['ventas_iva'] += ventas_iva
-            totales_ventas_sesion['ieps8'] += ieps8
-            totales_ventas_sesion['iva'] += iva
-            totales_ventas_sesion['total'] += total
-
+        totales_ventas_sesion['ieps_facturas_individuales'] = ieps_facturas_individuales
+        totales_ventas_sesion['ieps_global_simulado'] = ieps_global_simulado_neto
+        totales_ventas_sesion['ieps_total_fiscal'] = ieps_total_fiscal
 
         for referencia in ventas:
             # folio = referencia.name.split("/", 1)[1]
