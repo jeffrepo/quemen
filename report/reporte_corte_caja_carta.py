@@ -79,7 +79,7 @@ class ReporteCorteCajaCarta(models.AbstractModel):
                         if llave not in lineas_facturar_dic:
                             linea_0 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(0%) VENTAS")
                             linea_16 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(16%) VENTAS")
-                            
+
                             # Si la promoción tiene IEPS y este producto aplica IEPS, añadirlo.
                             if impuesto_programa_ieps8 and any('IEPS' in t.name for t in linea.product_id.taxes_id):
                                 tax_ids = [(6, 0, linea.product_id.taxes_id.ids)]
@@ -385,34 +385,61 @@ class ReporteCorteCajaCarta(models.AbstractModel):
 
 
             # Caso: 0% + IEPS
-            if descuento_base0 > 0 and tiene_ieps:
-                descuento_sin_iva = descuento_base0
-                descuento_ieps8   = descuento_base0 * 0.08
+            # if descuento_base0 > 0 and tiene_ieps:
+            #     descuento_sin_iva = descuento_base0
+            #     descuento_ieps8   = descuento_base0 * 0.08
+            #
+            # # Caso: 16% + IEPS
+            # elif descuento_base16 > 0 and tiene_ieps:
+            #     descuento_sin_iva = 0.0
+            #     descuento_base = descuento_base16
+            #     descuento_ieps8 = descuento_base * 0.08
+            #     descuento_iva   = (descuento_base + descuento_ieps8) * 0.16
+            #
+            # # Caso: solo 16%
+            # elif descuento_base16 > 0 and not tiene_ieps:
+            #     descuento_iva = descuento_base16 * 0.16
+            #
+            # # Caso: solo 0%
+            # elif descuento_base0 > 0 and not tiene_ieps:
+            #     descuento_sin_iva = descuento_base0
+            #
+            # # Total descuento
+            # descuento_total = descuento_sin_iva + descuento_iva + descuento_ieps8
 
-            # Caso: 16% + IEPS
-            elif descuento_base16 > 0 and tiene_ieps:
-                descuento_sin_iva = 0.0
-                descuento_base = descuento_base16
-                descuento_ieps8 = descuento_base * 0.08
-                descuento_iva   = (descuento_base + descuento_ieps8) * 0.16
+            # Descuentos reales calculados con compute_all()
+            # res_before = impuestos antes del descuento
+            # res_after  = impuestos después del descuento
 
-            # Caso: solo 16%
-            elif descuento_base16 > 0 and not tiene_ieps:
-                descuento_iva = descuento_base16 * 0.16
+            descuento_sin_iva = max(b0_before - b0_after, 0.0)
 
-            # Caso: solo 0%
-            elif descuento_base0 > 0 and not tiene_ieps:
-                descuento_sin_iva = descuento_base0
+            # Esta variable representa la BASE gravada 16% descontada.
+            # Se usa para la columna "Desct 16%".
+            descuento_base16 = max(b16_before - b16_after, 0.0)
 
-            # Total descuento
-            descuento_total = descuento_sin_iva + descuento_iva + descuento_ieps8
+            # Estos son impuestos descontados reales.
+            # Se usan para cuadrar contra factura.
+            descuento_ieps8 = max(ieps_before - ieps_after, 0.0)
+            descuento_iva_impuesto = max(iva_before - iva_after, 0.0)
+
+            # Total descuento fiscal completo:
+            # base 0% + base 16% + IEPS descontado + IVA descontado
+            descuento_total = (
+                descuento_sin_iva +
+                descuento_base16 +
+                descuento_ieps8 +
+                descuento_iva_impuesto
+            )
 
             # Guardar descuentos en el diccionario del ticket
+            # ventas_sesion[ticket_ref]['descuento_sin_iva'] += descuento_sin_iva
+            # ventas_sesion[ticket_ref]['descuento_iva'] += descuento_iva
+            # ventas_sesion[ticket_ref]['descuento_ieps8'] += descuento_ieps8
+            # ventas_sesion[ticket_ref]['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
             ventas_sesion[ticket_ref]['descuento_sin_iva'] += descuento_sin_iva
-            ventas_sesion[ticket_ref]['descuento_iva'] += descuento_iva
+            ventas_sesion[ticket_ref]['descuento_iva'] += descuento_base16
             ventas_sesion[ticket_ref]['descuento_ieps8'] += descuento_ieps8
-            ventas_sesion[ticket_ref]['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
-
+            ventas_sesion[ticket_ref]['descuento'] += descuento_total
             # --- acumular en el ticket ---
             ventas_sesion[ticket_ref]['ventas_sin_iva'] += ventas_sin_iva
             ventas_sesion[ticket_ref]['ventas_iva'] += ventas_iva
@@ -421,11 +448,15 @@ class ReporteCorteCajaCarta(models.AbstractModel):
             ventas_sesion[ticket_ref]['total'] += total
 
             # También acumular en los totales generales
+            # totales_ventas_sesion['descuento_sin_iva'] += descuento_sin_iva
+            # totales_ventas_sesion['descuento_iva'] += descuento_iva
+            # totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
+            # totales_ventas_sesion['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
             totales_ventas_sesion['descuento_sin_iva'] += descuento_sin_iva
-            totales_ventas_sesion['descuento_iva'] += descuento_iva
+            totales_ventas_sesion['descuento_iva'] += descuento_base16
             totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
-            totales_ventas_sesion['descuento'] += (descuento_sin_iva + descuento_iva + descuento_ieps8)
-
+            totales_ventas_sesion['descuento'] += descuento_total
+            
             # --- acumular en los totales generales ---
             totales_ventas_sesion['ventas_sin_iva'] += ventas_sin_iva
             totales_ventas_sesion['ventas_iva'] += ventas_iva
@@ -456,7 +487,7 @@ class ReporteCorteCajaCarta(models.AbstractModel):
             iva_venta = referencia.amount_tax
             total = referencia.amount_total
             suma_iva = round(iva_venta, 2)
-            
+
             for linea_pago in referencia.payment_ids:
                 if linea_pago.payment_method_id.name == 'Efectivo':
                     venta_efectivo += linea_pago.amount
