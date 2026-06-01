@@ -58,24 +58,45 @@ class ReporteCorteCajaCarta(models.AbstractModel):
                         logging.warning("****************************")
                         logging.warning(producto_ids[0].name)
                         logging.warning(producto_ids[0].taxes_id)
-                        if producto_ids[0].taxes_id[0].name == "IVA(16%) VENTAS":
-                            impuesto_programa_16 =  "IVA(16%) VENTAS"
-                            total_descuento_16 += (linea.price_subtotal_incl*-1)
+                        tax_names_producto = producto_ids[0].taxes_id.mapped('name')
+
+                        if "IVA(16%) VENTAS" in tax_names_producto:
+                            impuesto_programa_16 = "IVA(16%) VENTAS"
+                            total_descuento_16 += (linea.price_subtotal_incl * -1)
                             producto_16_ids = self.env['product.product'].search(dominio)
                             producto_16_ids += linea.program_id.discount_specific_product_ids
                         else:
                             impuesto_programa_0 = "IVA(0%) VENTAS"
-                            total_descuento_0 += (linea.price_subtotal_incl*-1)
+                            total_descuento_0 += (linea.price_subtotal_incl * -1)
                             producto_0_ids = self.env['product.product'].search(dominio)
                             producto_0_ids += linea.program_id.discount_specific_product_ids
 
-                        if len(producto_ids[0].taxes_id) > 1:
-                            if producto_ids[0].taxes_id[1].name == "IEPS(8%) VENTAS":
-                                impuesto_programa_ieps8 = True
+                        if any('IEPS' in name for name in tax_names_producto):
+                            impuesto_programa_ieps8 = True
+                        # if producto_ids[0].taxes_id[0].name == "IVA(16%) VENTAS":
+                        #     impuesto_programa_16 =  "IVA(16%) VENTAS"
+                        #     total_descuento_16 += (linea.price_subtotal_incl*-1)
+                        #     producto_16_ids = self.env['product.product'].search(dominio)
+                        #     producto_16_ids += linea.program_id.discount_specific_product_ids
+                        # else:
+                        #     impuesto_programa_0 = "IVA(0%) VENTAS"
+                        #     total_descuento_0 += (linea.price_subtotal_incl*-1)
+                        #     producto_0_ids = self.env['product.product'].search(dominio)
+                        #     producto_0_ids += linea.program_id.discount_specific_product_ids
+                        #
+                        # if len(producto_ids[0].taxes_id) > 1:
+                        #     if producto_ids[0].taxes_id[1].name == "IEPS(8%) VENTAS":
+                        #         impuesto_programa_ieps8 = True
 
                 for linea in pedido.lines:
-                    llave = str(linea.order_id.name)+str(linea.tax_ids_after_fiscal_position[0].name)
+                    #llave = str(linea.order_id.name)+str(linea.tax_ids_after_fiscal_position[0].name)
+                    tax_key = '-'.join(map(str, sorted(linea.tax_ids_after_fiscal_position.ids)))
+                    llave = '%s-%s' % (linea.order_id.name, tax_key)
                     if linea.price_subtotal_incl > 0:
+                        tax_names = linea.tax_ids_after_fiscal_position.mapped('name')
+                        tiene_iva_0 = "IVA(0%) VENTAS" in tax_names
+                        tiene_iva_16 = "IVA(16%) VENTAS" in tax_names
+                        tiene_ieps = any('IEPS' in name for name in tax_names)
                         if llave not in lineas_facturar_dic:
                             linea_0 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(0%) VENTAS")
                             linea_16 = linea.tax_ids_after_fiscal_position.filtered(lambda t: t.name == "IVA(16%) VENTAS")
@@ -103,11 +124,21 @@ class ReporteCorteCajaCarta(models.AbstractModel):
                                 'linea_16': linea_16,
                             }
                             lineas_facturar_dic[llave] = linea_factura
-                        if (impuesto_programa_0 and producto_0_ids) and (linea.product_id.id in producto_0_ids.ids) and (linea.tax_ids_after_fiscal_position[0].name == impuesto_programa_0):
+                        if (
+                            impuesto_programa_0
+                            and producto_0_ids
+                            and linea.product_id.id in producto_0_ids.ids
+                            and tiene_iva_0
+                        ):
                             lineas_facturar_dic[llave]['price_unit'] += linea.price_subtotal_incl
                             if lineas_facturar_dic[llave]['tax_ids'] == False:
                                 lineas_facturar_dic[llave]['tax_ids'] = [(6, 0, linea.product_id.taxes_id.ids)]
-                        elif (impuesto_programa_16 and producto_16_ids) and (linea.product_id.id in producto_16_ids.ids) and (linea.tax_ids_after_fiscal_position[0].name == impuesto_programa_16):
+                        elif (
+                            impuesto_programa_16
+                            and producto_16_ids
+                            and linea.product_id.id in producto_16_ids.ids
+                            and tiene_iva_16
+                        ):
                             lineas_facturar_dic[llave]['price_unit'] += linea.price_subtotal_incl
                             if lineas_facturar_dic[llave]['tax_ids'] == False:
                                 lineas_facturar_dic[llave]['tax_ids'] = [(6, 0, linea.tax_ids_after_fiscal_position.ids)]
@@ -119,7 +150,8 @@ class ReporteCorteCajaCarta(models.AbstractModel):
                                 if 'total_descuento_0' in lineas_facturar_dic[llave]:
                                     del lineas_facturar_dic[llave]['total_descuento_0']
                             else:
-                                if linea.tax_ids_after_fiscal_position[0].name != impuesto_programa_0:
+                                #if linea.tax_ids_after_fiscal_position[0].name != impuesto_programa_0:
+                                if not tiene_iva_0:
                                     if 'total_descuento_0' in lineas_facturar_dic[llave]:
                                         del lineas_facturar_dic[llave]['total_descuento_0']
                                     if total_descuento_16 == 0:
@@ -420,6 +452,16 @@ class ReporteCorteCajaCarta(models.AbstractModel):
             # Estos son impuestos descontados reales.
             # Se usan para cuadrar contra factura.
             descuento_ieps8 = max(ieps_before - ieps_after, 0.0)
+            if descuento_ieps8:
+                logging.warning(
+                    "DESCUENTO IEPS | ticket=%s | price_unit=%s | discount=%s | ieps_before=%s | ieps_after=%s | descuento_ieps8=%s",
+                    ticket_ref,
+                    price_unit,
+                    discount,
+                    ieps_before,
+                    ieps_after,
+                    descuento_ieps8,
+                )
             descuento_iva_impuesto = max(iva_before - iva_after, 0.0)
 
             # Total descuento fiscal completo:
@@ -744,46 +786,46 @@ class ReporteCorteCajaCarta(models.AbstractModel):
         for lst_cancelados in listado_cancelados:
             total_cancelado += lst_cancelados['importe']
 
-            listado_totales.append({
-                'total_columnas_ventas_sin_iva': totales_ventas_sesion['ventas_sin_iva'],
-                'total_columnas_descuento_sin_iva': totales_ventas_sesion['descuento_sin_iva'],
-                'total_columnas_ventas_iva': totales_ventas_sesion['ventas_iva'],
-                'total_columnas_descuento_iva': totales_ventas_sesion['descuento_iva'],
-                'total_columna_descuento': (
-                    totales_ventas_sesion['descuento_sin_iva'] +
-                    totales_ventas_sesion['descuento_iva'] +
-                    totales_ventas_sesion['descuento_ieps8']
-                ),
-                'total_columna_iva': totales_ventas_sesion['iva'],
-                'total_columna_total': totales_ventas_sesion['total'],
-                'importe': (
-                    totales_ventas_sesion['ventas_sin_iva'] +
-                    totales_ventas_sesion['ventas_iva'] +
-                    totales_ventas_sesion['ieps8'] +
-                    totales_ventas_sesion['iva']
-                ),
-                'total_ventas_mostrador': totales_ventas_sesion['total'],
-                'folios_concatenados': folios_concatenados,
-                'total_nota_credito': total_nota_credito,
-                'total_descuento_credito': total_descuento_credito,
-                'total_importe_credito': total_importe_credito,
-                'total_desglose_venta': round(totales_ventas_sesion['total'] - total_nota_credito, 2),
-                'suma_columna_ventas_expedidas': suma_columna_ventas_expedidas,
-                'suma_columna_ventas_iva_expedidas': suma_columna_ventas_iva_expedidas,
-                'suma_columna_iva_expedidas': suma_iva_expedido,
-                'suma_columna_total_expedido': suma_total_expedido,
-                'suma_columna_total_facturas_totales': suma_columna_total_expedido + total_factura_global,
-                'contador_efectivo': contador_efectivo,
-                'total_pago': total_pagos,
-                'total_retiros': total_retiros,
-                'total_cancelado': total_cancelado,
-                'total_columnas_ieps8': totales_ventas_sesion['ieps8'],
-                'total_columnas_descuento_ieps8': totales_ventas_sesion['descuento_ieps8'],
-                'total_columnas_ieps8_neto': (
-                    totales_ventas_sesion['ieps8'] -
-                    totales_ventas_sesion['descuento_ieps8']
-                ),
-            })
+        listado_totales.append({
+            'total_columnas_ventas_sin_iva': totales_ventas_sesion['ventas_sin_iva'],
+            'total_columnas_descuento_sin_iva': totales_ventas_sesion['descuento_sin_iva'],
+            'total_columnas_ventas_iva': totales_ventas_sesion['ventas_iva'],
+            'total_columnas_descuento_iva': totales_ventas_sesion['descuento_iva'],
+            'total_columna_descuento': (
+                totales_ventas_sesion['descuento_sin_iva'] +
+                totales_ventas_sesion['descuento_iva'] +
+                totales_ventas_sesion['descuento_ieps8']
+            ),
+            'total_columna_iva': totales_ventas_sesion['iva'],
+            'total_columna_total': totales_ventas_sesion['total'],
+            'importe': (
+                totales_ventas_sesion['ventas_sin_iva'] +
+                totales_ventas_sesion['ventas_iva'] +
+                totales_ventas_sesion['ieps8'] +
+                totales_ventas_sesion['iva']
+            ),
+            'total_ventas_mostrador': totales_ventas_sesion['total'],
+            'folios_concatenados': folios_concatenados,
+            'total_nota_credito': total_nota_credito,
+            'total_descuento_credito': total_descuento_credito,
+            'total_importe_credito': total_importe_credito,
+            'total_desglose_venta': round(totales_ventas_sesion['total'] - total_nota_credito, 2),
+            'suma_columna_ventas_expedidas': suma_columna_ventas_expedidas,
+            'suma_columna_ventas_iva_expedidas': suma_columna_ventas_iva_expedidas,
+            'suma_columna_iva_expedidas': suma_iva_expedido,
+            'suma_columna_total_expedido': suma_total_expedido,
+            'suma_columna_total_facturas_totales': suma_columna_total_expedido + total_factura_global,
+            'contador_efectivo': contador_efectivo,
+            'total_pago': total_pagos,
+            'total_retiros': total_retiros,
+            'total_cancelado': total_cancelado,
+            'total_columnas_ieps8': totales_ventas_sesion['ieps8'],
+            'total_columnas_descuento_ieps8': totales_ventas_sesion['descuento_ieps8'],
+            'total_columnas_ieps8_neto': (
+                totales_ventas_sesion['ieps8'] -
+                totales_ventas_sesion['descuento_ieps8']
+            ),
+        })
 
         total_ventas_mostrador = totales_ventas_sesion['total']
         total_facturas_expedidas = resumen_facturas_expedidas['total'] + resumen_factura_global['total']
