@@ -456,7 +456,7 @@ class ReporteCorteCajaCarta(models.AbstractModel):
             totales_ventas_sesion['descuento_iva'] += descuento_base16
             totales_ventas_sesion['descuento_ieps8'] += descuento_ieps8
             totales_ventas_sesion['descuento'] += descuento_total
-            
+
             # --- acumular en los totales generales ---
             totales_ventas_sesion['ventas_sin_iva'] += ventas_sin_iva
             totales_ventas_sesion['ventas_iva'] += ventas_iva
@@ -776,7 +776,13 @@ class ReporteCorteCajaCarta(models.AbstractModel):
                 'contador_efectivo': contador_efectivo,
                 'total_pago': total_pagos,
                 'total_retiros': total_retiros,
-                'total_cancelado': total_cancelado
+                'total_cancelado': total_cancelado,
+                'total_columnas_ieps8': totales_ventas_sesion['ieps8'],
+                'total_columnas_descuento_ieps8': totales_ventas_sesion['descuento_ieps8'],
+                'total_columnas_ieps8_neto': (
+                    totales_ventas_sesion['ieps8'] -
+                    totales_ventas_sesion['descuento_ieps8']
+                ),
             })
 
         total_ventas_mostrador = totales_ventas_sesion['total']
