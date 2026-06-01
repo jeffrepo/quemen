@@ -385,12 +385,21 @@ class ReporteCorteCajaCarta(models.AbstractModel):
 
 
             # --- VENTAS (valores netos después del descuento) ---
-            ventas_sin_iva = b0_after
-            ventas_iva     = b16_after
-            ieps8          = ieps_after
+            # ventas_sin_iva = b0_after
+            # ventas_iva     = b16_after
+            # ieps8          = ieps_after
+            # iva            = iva_after
+            # total          = tot_inc_after
+            # --- VENTAS / IMPUESTOS BRUTOS Y NETOS ---
+            # Las columnas de venta e impuestos deben mostrar el importe bruto.
+            # Las columnas de descuento muestran cuánto se descontó.
+            # Para conciliación fiscal se usa: IEPS neto = IEPS 8% - Desct IEPS 8%
+
+            ventas_sin_iva = b0_before
+            ventas_iva     = b16_before
+            ieps8          = ieps_before
             iva            = iva_after
             total          = tot_inc_after
-
 
             # --- Descuentos manuales (según Excel) ---
             descuento_base0  = b0_before - b0_after
