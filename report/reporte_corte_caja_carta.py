@@ -286,6 +286,16 @@ class ReporteCorteCajaCarta(models.AbstractModel):
             if not factura or factura.state != 'posted' or factura.move_type != 'out_invoice':
                 continue
 
+            # No procesar facturas globales aquí. La global se calcula/simula
+            # aparte por pedido para evitar duplicar la factura completa N veces.
+            if factura.factura_global:
+                continue
+
+            # Evitar duplicar una misma factura si por alguna razón viene ligada
+            # a más de un pedido.
+            if factura in facturas_procesadas:
+                continue
+
             facturas_procesadas |= factura
 
             lineas_reales = factura.invoice_line_ids.filtered(
@@ -408,8 +418,21 @@ class ReporteCorteCajaCarta(models.AbstractModel):
         currency = docs.currency_id or self.env.company.currency_id
 
         pedidos_corte = self._pedidos_validos_corte(docs)
-        pedidos_facturados_individuales = pedidos_corte.filtered(lambda p: p.account_move)
-        pedidos_para_global = pedidos_corte.filtered(lambda p: not p.account_move)
+
+        # IMPORTANTE:
+        # pedido.account_move puede apuntar a una factura global ya generada.
+        # Esa factura NO debe tratarse como factura individual, porque se duplicaría
+        # la factura completa por cada pedido relacionado.
+        # Individual = tiene factura y NO es factura global.
+        pedidos_facturados_individuales = pedidos_corte.filtered(
+            lambda p: p.account_move and not p.account_move.factura_global
+        )
+
+        # Para global simulada entran:
+        # - pedidos sin factura;
+        # - pedidos que ya tienen factura_global_id/account_move global,
+        #   porque la simulación debe reconstruirlos una sola vez por pedido.
+        pedidos_para_global = pedidos_corte - pedidos_facturados_individuales
 
         # Facturas individuales existentes.
         facturas_individuales = self._acumular_facturas_individuales_en_corte(
