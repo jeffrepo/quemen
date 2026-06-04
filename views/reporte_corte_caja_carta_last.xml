@@ -164,7 +164,6 @@
               <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['ventas_sin_iva']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['descuento_sin_iva']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['ventas_iva']" t-options = '{"widget": "float", "precision": 2}'/></td>
-              <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['descuento_iva']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="right">
                 <span t-esc="ventas_sesion[p]['ieps8']" t-options='{"widget": "float", "precision": 2}'/>
               </td>
@@ -180,6 +179,7 @@
               <td style="font-size:100%" align="right">
                 <span t-esc="ventas_sesion[p]['descuento']" t-options='{"widget": "float", "precision": 2}'/>
               </td>
+              <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['descuento']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['iva']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="right"><span t-esc="ventas_sesion[p]['total']" t-options = '{"widget": "float", "precision": 2}'/></td>
               <td style="font-size:100%" align="center"><span t-esc="ventas_sesion[p]['fp']"/></td>

@@ -13,32 +13,13 @@ class ReporteCorteCajaCarta(models.AbstractModel):
     def _pedidos_validos_corte(self, docs):
         """Pedidos válidos de la sesión para corte/facturación."""
         pedidos = self.env['pos.order']
-
-        def _pedido_es_reembolso(pedido):
-            """
-            Compatibilidad Odoo 16/17/18/19.
-            En algunas versiones existe is_refunded.
-            En otras se usan campos de relación de reembolso.
-            """
-            if 'is_refunded' in pedido._fields:
-                return pedido.is_refunded
-        
-            if 'refunded_order_id' in pedido._fields and pedido.refunded_order_id:
-                return True
-        
-            # Normalmente las devoluciones POS tienen total negativo.
-            if pedido.amount_total < 0:
-                return True
-        
-            return False
-            
         for sesion in docs:
             pedidos |= sesion.order_ids.filtered(
                 lambda p: (
                     p.invalido is False
                     and p.state in ['done', 'paid', 'invoiced']
                     and p.amount_total > 0
-                    and not  _pedido_es_reembolso(p)
+                    and not p.is_refunded
                 )
             )
         return pedidos
@@ -226,30 +207,10 @@ class ReporteCorteCajaCarta(models.AbstractModel):
         res_after = _compute(price_unit_desc)
 
         def _split(res):
-            taxes_data = res.get('taxes', [])
-
-            iva0_taxes = [t for t in taxes_data if 'IVA' in t.get('name', '') and '0%' in t.get('name', '')]
-            iva16_taxes = [t for t in taxes_data if 'IVA' in t.get('name', '') and '16%' in t.get('name', '')]
-            ieps_taxes = [t for t in taxes_data if 'IEPS' in t.get('name', '')]
-
-            iva = sum(t.get('amount', 0.0) for t in iva0_taxes + iva16_taxes)
-            ieps = sum(t.get('amount', 0.0) for t in ieps_taxes)
-
-            # Importante para productos con IEPS incluido:
-            # la columna de venta debe mostrar la base fiscal antes de IEPS,
-            # no la base de IVA 0%/16%, porque esa base puede venir con IEPS incluido.
-            if ieps_taxes:
-                base_ieps = sum(t.get('base', 0.0) for t in ieps_taxes)
-                if iva16_taxes:
-                    base0 = 0.0
-                    base16 = base_ieps
-                else:
-                    base0 = base_ieps
-                    base16 = 0.0
-            else:
-                base0 = sum(t.get('base', 0.0) for t in iva0_taxes)
-                base16 = sum(t.get('base', 0.0) for t in iva16_taxes)
-
+            base0 = sum(t['base'] for t in res['taxes'] if '0%' in t['name'])
+            base16 = sum(t['base'] for t in res['taxes'] if '16%' in t['name'])
+            iva = sum(t['amount'] for t in res['taxes'] if 'IVA' in t['name'])
+            ieps = sum(t['amount'] for t in res['taxes'] if 'IEPS' in t['name'])
             return base0, base16, iva, ieps, res['total_excluded'], res['total_included']
 
         b0_before, b16_before, iva_before, ieps_before, _, _ = _split(res_before)
