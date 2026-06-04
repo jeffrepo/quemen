@@ -6,29 +6,23 @@ odoo.define('quemen.pos', function(require) {
     const models = require('point_of_sale.models');
     const _order_super = models.Order.prototype;
 
-    // Cambiar a true solo para diagnóstico puntual.
-    const DEBUG_PROMO_TIME = false;
-
-    function log() {
-        if (DEBUG_PROMO_TIME) {
-            console.log.apply(console, ['[PROMO_TIME]'].concat(Array.from(arguments)));
-        }
-    }
-
     models.Order = models.Order.extend({
         _minutes_from_date: function(date) {
             return date.getHours() * 60 + date.getMinutes();
         },
 
         _is_time_in_range: function(currentMinutes, startMinutes, endMinutes) {
+            // Same start/end means "all day".
             if (startMinutes === endMinutes) {
                 return true;
             }
 
+            // Normal range, for example 08:00-18:00.
             if (startMinutes < endMinutes) {
                 return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
             }
 
+            // Overnight range, for example 22:00-05:00.
             return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
         },
 
@@ -45,7 +39,6 @@ odoo.define('quemen.pos', function(require) {
             );
 
             if (!check || !check.successful) {
-                log('check base rechazado', program.id, program.name, check);
                 return check;
             }
 
@@ -66,16 +59,6 @@ odoo.define('quemen.pos', function(require) {
                 ruleFromMinutes,
                 ruleToMinutes
             );
-
-            log('check horario', program.id, program.name, {
-                now: orderDate,
-                orderMinutes: orderMinutes,
-                rule_date_from: program.rule_date_from,
-                rule_date_to: program.rule_date_to,
-                ruleFromMinutes: ruleFromMinutes,
-                ruleToMinutes: ruleToMinutes,
-                allowed: timeAllowed,
-            });
 
             if (!timeAllowed) {
                 return {
