@@ -30,7 +30,7 @@
                             <tbody>
                                 <tr t-foreach="o.product_ids" t-as="line">
                                     <t t-if="line.product_id.name[0:4] == 'COMP'">
-                                        <td><span t-field="line.product_id.name"/></td>
+                                        <td><span t-field="line.product_id.display_name"/></td>
                                         <td><span t-field="line.quantity"/></td>
                                     </t>
                                 </tr>
