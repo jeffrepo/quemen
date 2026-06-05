@@ -47,7 +47,7 @@
                             </thead>
                             <tbody>
                                 <tr t-foreach='product_sumary_1' t-as='mp'>
-                                    <td><span t-esc="product_sumary_1[mp]['product'].name"/></td>
+                                    <td><span t-esc="product_sumary_1[mp]['product'].display_name"/></td>
                                     <td><span t-esc="product_sumary_1[mp]['quantity_exp']" t-options='{"widget": "float", "precision": 5}'/></td>
                                     <td><span t-esc="product_sumary_1[mp]['product'].standard_price*product_sumary_1[mp]['quantity_exp']" t-options='{"widget": "float", "precision": 5}'/></td>
                                 </tr>
