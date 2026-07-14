@@ -59,7 +59,7 @@
         'views/reporte_explosion_insumos.xml',
         'views/reporte_explosion_insumos_costo.xml',
         'views/mrp_bom_views.xml',
-        #'views/pos_order_view.xml',
+        'views/pos_order_view.xml',
         'views/quemen_pos_order_report_view.xml',
         # 'views/templates.xml',
         'views/reporte_codigo_barras.xml',
