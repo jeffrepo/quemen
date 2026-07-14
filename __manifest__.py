@@ -97,6 +97,14 @@
         # 'static/src/xml/pos.xml',
     ],
     'assets':{
+        'point_of_sale._assets_pos': [
+            'quemen/static/src/js/models.js',
+            'quemen/static/src/js/Popups/PedidoEspecialPopup.js',
+            'quemen/static/src/js/Screens/ProductScreen/ControlButtons/PedidoEspecialButton.js',
+            'quemen/static/src/xml/Popups/PedidoEspecialPopup.xml',
+            'quemen/static/src/xml/Screens/ProductScreen/ControlButtons/SplitBillButton.xml',
+            'quemen/static/src/css/pos.css',
+        ],
         'point_of_sale.assets': [
             'quemen/static/src/js/models.js',
             'quemen/static/src/js/Screens/ProductScreen/ProductScreen.js',

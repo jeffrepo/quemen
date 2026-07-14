@@ -1,299 +1,177 @@
-odoo.define('quemen.models', function (require) {
-"use strict";
-    const { Context } = owl;
-    var rpc = require('web.rpc');
-    var models = require('point_of_sale.models');
-    // var gui = require('point_of_sale.gui');
-    var time, time1 = require('web.time');
-    var field_utils = require('web.field_utils');
-    // var gui = require('point_of_sale.gui');
+/** @odoo-module **/
 
-    // var { Gui } = require('point_of_sale.Gui');
+import { patch } from "@web/core/utils/patch";
+import { PosOrder } from "@point_of_sale/app/models/pos_order";
+import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
 
-    var core = require('web.core');
-    var rpc = require('web.rpc');
-    var _t = core._t;
+function cleanText(value) {
+    return (value || "").toString().trim();
+}
 
-    models.load_fields('res.company', 'street_name')
-    models.load_fields('res.company', 'street2')
-    models.load_fields('res.company', 'l10n_mx_edi_colony' )
-    models.load_fields('res.company', 'country_id')
-    models.load_fields('res.company', 'l10n_mx_edi_colony_code')
-    models.load_fields('res.company', 'l10n_mx_edi_locality')
-    models.load_fields('res.company', 'city')
-    models.load_fields('res.company', 'state_id')
-    models.load_fields('res.company', 'zip')
-    models.load_fields('res.company', 'country_id')
-    models.load_fields('account.journal', 'direccion')
+function formatDateForTicket(value) {
+    if (!value) {
+        return "";
+    }
+    const [year, month, day] = value.split("-");
+    return year && month && day ? `${day}/${month}/${year}` : value;
+}
 
-models.load_fields("product.product", ["invoice_policy", "type"]);
+function nowForTicket() {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(
+        now.getHours()
+    )}:${pad(now.getMinutes())}`;
+}
 
-var super_order_line_model = models.Orderline.prototype;
-models.Orderline = models.Orderline.extend({
-  initialize: function (attributes, options) {
-      super_order_line_model.initialize.apply(this, arguments);
+patch(PosOrderline.prototype, {
+    setup(vals) {
+        super.setup(...arguments);
+        this.producto_especial =
+            vals?.producto_especial || this.producto_especial || this.uiState?.productoEspecial || false;
+    },
 
-      this.producto_especial = this.producto_especial || false;
+    set_producto_especial(productoEspecial) {
+        this.producto_especial = Boolean(productoEspecial);
+        this.uiState.productoEspecial = this.producto_especial;
+        this._markDirty();
+    },
 
-  },
-  init_from_JSON: function (json) {
-      super_order_line_model.init_from_JSON.apply(this, arguments);
-      this.producto_especial = json.producto_especial;
-  },
-  export_as_JSON: function () {
-      const json = super_order_line_model.export_as_JSON.apply(this, arguments);
-      json.producto_especial = this.producto_especial;
-      return json;
-  },
-  set_producto_especial: function(producto_especial){
-    this.set({
-      producto_especial: producto_especial
-    });
-  },
-
-  get_producto_especial: function(){
-    return this.get('producto_especial');
-  },
-
+    get_producto_especial() {
+        return Boolean(this.producto_especial || this.uiState?.productoEspecial);
+    },
 });
 
-    var _super_posmodel = models.PosModel.prototype;
-    models.PosModel = models.PosModel.extend({
+patch(PosOrder.prototype, {
+    setup(vals) {
+        super.setup(...arguments);
+        this.tipo_venta = vals?.tipo_venta || this.tipo_venta || false;
+        this.pedido_especial = vals?.pedido_especial || this.pedido_especial || false;
+        this.fecha_especial = vals?.fecha_especial || this.fecha_especial || false;
+        this.hora_especial = vals?.hora_especial || this.hora_especial || "";
+        this.observaciones_especial =
+            vals?.observaciones_especial || this.observaciones_especial || "";
+        this.sucursal_entrega = vals?.sucursal_entrega || this.sucursal_entrega || "";
+        this.autorizo_especial = vals?.autorizo_especial || this.autorizo_especial || "";
+        this.fecha_hora_pedido_especial =
+            vals?.fecha_hora_pedido_especial || this.fecha_hora_pedido_especial || "";
+    },
 
-        initialize: function(attributes) {
-            _super_posmodel.initialize.apply(this,attributes);
+    setPedidoEspecial(payload = {}) {
+        this.tipo_venta = "especial";
+        this.pedido_especial = true;
+        this.fecha_especial = payload.fecha || false;
+        this.hora_especial = cleanText(payload.hora);
+        this.observaciones_especial = cleanText(payload.observaciones);
+        this.sucursal_entrega = cleanText(payload.sucursal_entrega);
+        this.autorizo_especial = cleanText(payload.autorizo);
+        this.fecha_hora_pedido_especial = payload.fecha_hora_actual || nowForTicket();
+        this._markDirty();
+    },
 
-            console.log('INICIALIZAR POS MODEL')
-	    var self = this;
-            self.rpc({
-                model: 'stock.lot',
-                method: 'get_available_lots_for_pos',
-                args: [],
-            }).then(function(result) {
-                self.lot_dict = result || {};
-                console.log('✅ Lotes cargados:', self.lot_dict);
-            }).catch(function(err) {
-                console.error('❌ Error cargando lotes:', err);
-            });
+    get_fecha() {
+        return this.fecha_especial;
+    },
 
-            self.regimenes_fiscales = [{
-                'id': 601,
-                'name': 'General de Ley Personas Morales',
-            }, {
-                'id': 603,
-                'name': 'Personas Morales con Fines no Lucrativos',
-            }, {
-                'id': 603,
-                'name': 'Personas Morales con Fines no Lucrativos',
-            }, {
-                'id': 605,
-                'name': 'Sueldos y Salarios e Ingresos Asimilados a Salarios',
-            }, {
-                'id': 606,
-                'name': 'Arrendamiento',
-            }, {
-                'id': 607,
-                'name': 'Régimen de Enajenación o Adquisición de Bienes',
-            } , {
-                'id': 608,
-                'name': 'Demás ingresos',
-            } , {
-                'id': 609,
-                'name': 'Consolidación',
-            } , {
-                'id': 610,
-                'name': 'Residentes en el Extranjero sin Establecimiento Permanente en México',
-            } , {
-                'id': 611,
-                'name': 'Ingresos por Dividendos (socios y accionistas)',
-            }, {
-                'id': 612,
-                'name': 'Personas Físicas con Actividades Empresariales y Profesionales',
-            }, {
-                'id': 614,
-                'name': 'Ingresos por intereses',
-            }, {
-                'id': 615,
-                'name': 'Régimen de los ingresos por obtención de premios',
-            }, {
-                'id': 616,
-                'name': 'Sin obligaciones fiscales',
-            }, {
-                'id': 620,
-                'name': 'Sociedades Cooperativas de Producción que optan por diferir sus ingresos',
-            }, {
-                'id': 621,
-                'name': 'Incorporación Fiscal',
-            }, {
-                'id': 622,
-                'name': 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras',
-            }, {
-                'id': 623,
-                'name': 'Opcional para Grupos de Sociedades',
-            }, {
-                'id': 624,
-                'name': 'Coordinados',
-            }, {
-                'id': 625,
-                'name': 'Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas',
-            },{
-                'id': 626,
-                'name': 'Régimen Simplificado de Confianza - RESICO',
-            },{
-                'id': 628,
-                'name': 'Hidrocarburos',
-            },{
-                'id': 629,
-                'name': 'De los Regímenes Fiscales Preferentes y de las Empresas Multinacionales',
-            },{
-                'id': 630,
-                'name': 'Enajenación de acciones en bolsa de valores',
-            }]
-            console.log(self)
-        },
-        add_new_order: function(){
-            var new_order = _super_posmodel.add_new_order.apply(this);
-            console.log("Que es esto?")
-            if (this.config.cliente_id) {
-                new_order.set_client(this.db.get_partner_by_id(this.config.cliente_id[0]))
+    get_hora() {
+        return this.hora_especial;
+    },
+
+    get_observaciones() {
+        return this.observaciones_especial;
+    },
+
+    get_autorizo() {
+        return this.autorizo_especial;
+    },
+
+    get_entrega() {
+        return this.sucursal_entrega;
+    },
+
+    get_fecha_formato() {
+        return formatDateForTicket(this.fecha_especial);
+    },
+
+    get_fecha_hora_actual() {
+        return this.fecha_hora_pedido_especial || nowForTicket();
+    },
+
+    get_terminos_condiciones() {
+        return this.config?.terminos_condiciones || "";
+    },
+
+    get_dicc_prod_especiales() {
+        const productos = {};
+        for (const line of this.lines || []) {
+            if (!line.get_producto_especial?.()) {
+                continue;
             }
+            const product = line.getProduct();
+            if (!product) {
+                continue;
+            }
+            const productId = product.id;
+            if (!productos[productId]) {
+                productos[productId] = {
+                    nombre_producto: product.display_name || product.name,
+                    cantidad: 0,
+                    precio_unitario: line.price_unit,
+                    precio_unitario_con_iva: line.displayPriceUnitIncl,
+                    precio_total: 0,
+                    total_con_iva: 0,
+                    estado: false,
+                };
+            }
+            productos[productId].cantidad += line.getQuantity();
+            productos[productId].precio_total += line.priceExcl;
+            productos[productId].total_con_iva += line.priceIncl;
         }
-    })
+        return productos;
+    },
 
+    get_dicc_total() {
+        return {
+            sub_total: this.priceExcl,
+            total_iva: this.amountTaxes,
+            total: this.priceIncl,
+        };
+    },
 
-var _super_order = models.Order.prototype;
+    getPedidoEspecialTicketData() {
+        return {
+            pedido_especial: this.pedido_especial,
+            fecha: this.get_fecha(),
+            hora: this.get_hora(),
+            fecha_formato: this.get_fecha_formato(),
+            fecha_hora_actual: this.get_fecha_hora_actual(),
+            observaciones: this.get_observaciones(),
+            sucursal_entrega: this.get_entrega(),
+            autorizo: this.get_autorizo(),
+            productos: this.get_dicc_prod_especiales(),
+            totales: this.get_dicc_total(),
+            terminos_condiciones: this.get_terminos_condiciones(),
+        };
+    },
 
-models.Order = models.Order.extend({
-
-  set_fecha: function(fecha_hora){
-    this.set({
-      fecha: fecha_hora
-    });
-  },
-
-  get_fecha: function(){
-    return this.get('fecha');
-  },
-
-  set_hora: function(hora_id){
-    this.set({
-      hora: hora_id
-    });
-  },
-
-  get_hora: function(){
-    return this.get('hora')
-  },
-
-  set_observaciones: function(observaciones){
-    this.set({
-      observaciones: observaciones
-    });
-  },
-
-  get_observaciones: function(){
-    return this.get('observaciones')
-  },
-
-  set_autorizo: function(autorizo){
-    this.set({
-      autorizo: autorizo
-    });
-  },
-
-  get_autorizo: function(){
-    return this.get('autorizo')
-  },
-
-  set_terminosCondiciones: function(terminos_condiciones){
-    this.set({
-      terminos_condiciones: terminos_condiciones
-    });
-  },
-
-  get_terminos_condiciones: function(){
-    return this.get('terminos_condiciones')
-  },
-
-  set_entrega: function(sucursal_entrega){
-    this.set({
-      entrega: sucursal_entrega
-    });
-  },
-
-  get_entrega: function(){
-    return this.get('entrega')
-  },
-
-  set_fecha_formato: function(formato_correcto){
-    this.set({
-      formato_correcto: formato_correcto
-    });
-  },
-
-  get_fecha_formato: function(){
-    return this.get('formato_correcto')
-  },
-
-  set_fecha_hora_actual: function (fecha_hora_actual){
-    this.set({
-      fecha_hora_actual: fecha_hora_actual
-    });
-  },
-
-  get_fecha_hora_actual: function(){
-    return this.get('fecha_hora_actual')
-  },
-
-  set_dicc_prod_especiales: function(dicc_productos_especiales){
-    console.log('set productos especiales')
-    console.log(dicc_productos_especiales)
-    this.set({
-      dicc_productos_especiales: dicc_productos_especiales
-    });
-  },
-
-  get_dicc_prod_especiales: function(){
-    console.log('get dicc_productos_especiales')
-    console.log(this.get('dicc_productos_especiales'))
-    return this.get('dicc_productos_especiales')
-  },
-
-  set_dicc_total: function(dicc_total){
-    this.set({
-      dicc_total: dicc_total
-    });
-  },
-
-  get_dicc_total: function(){
-    return this.get('dicc_total')
-  },
-
-  export_as_JSON : function(){
-
-    var new_json = _super_order.export_as_JSON.apply(this);
-    new_json['fecha'] = this.get_fecha() ? this.get_fecha() : false;
-    new_json['hora'] = this.get_hora() ? this.get_hora(): false;
-    new_json['observaciones'] = this.get_observaciones() ? this.get_observaciones() : false;
-    new_json['sucursal_entrega'] = this.get_entrega() ? this.get_entrega() : false;
-    new_json['autorizo'] = this.get_autorizo() ? this.get_autorizo() : false;
-    return new_json;
-  },
-
-  initialize: function() {
-    _super_order.initialize.apply(this,arguments);
-    console.log('initialize productos especiales')
-    this.set_fecha();
-    this.set_hora();
-    this.set_observaciones();
-    this.set_autorizo();
-    this.set_fecha_formato();
-    this.set_entrega();
-    this.set_fecha_hora_actual();
-    this.set_dicc_prod_especiales();
-    this.set_dicc_total();
-    this.set_terminosCondiciones();
-	},
-
-});
+    serializeForORM(opts = {}) {
+        const data = super.serializeForORM(...arguments);
+        if (
+            this.pedido_especial ||
+            this.fecha_especial ||
+            this.hora_especial ||
+            this.observaciones_especial ||
+            this.sucursal_entrega ||
+            this.autorizo_especial
+        ) {
+            data.tipo_venta = "especial";
+            data.pedido_especial = true;
+            data.fecha_especial = this.fecha_especial || false;
+            data.hora_especial = this.hora_especial || false;
+            data.observaciones_especial = this.observaciones_especial || false;
+            data.sucursal_entrega = this.sucursal_entrega || false;
+            data.autorizo_especial = this.autorizo_especial || false;
+        }
+        return data;
+    },
 });

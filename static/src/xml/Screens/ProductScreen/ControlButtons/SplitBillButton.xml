@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-
-    <t t-name="PedidoEspecialButton" owl="1">
-        <span class="control-button order-split">
-            <i class="fa fa-files-o"></i>
-            <span> </span>
-            <span>Pedido especial</span>
-        </span>
-    </t>
-    
-    <t t-name="QuemenRefundButton" t-inherit="point_of_sale.RefundButton" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('control-button')]" position="replace">
-            <div></div>
+    <t t-name="quemen.PedidoEspecialButton"
+       t-inherit="point_of_sale.ControlButtons"
+       t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('more-btn')]" position="before">
+            <button t-if="!props.showRemainingButtons"
+                    t-att-disabled="currentOrder?.isEmpty()"
+                    t-att-class="buttonClass"
+                    t-on-click="() => this.clickPedidoEspecial()">
+                <i class="fa fa-file-text-o me-1" role="img" aria-label="Pedido especial" title="Pedido especial"/>
+                Pedido especial
+            </button>
+        </xpath>
+        <xpath expr="//div[hasclass('control-buttons-modal')]" position="inside">
+            <button t-att-class="buttonClass"
+                    t-att-disabled="currentOrder?.isEmpty()"
+                    t-on-click="() => this.clickPedidoEspecial()">
+                <i class="fa fa-file-text-o me-1" role="img" aria-label="Pedido especial" title="Pedido especial"/>
+                Pedido especial
+            </button>
         </xpath>
     </t>
-    
 </templates>

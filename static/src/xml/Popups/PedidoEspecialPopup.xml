@@ -1,113 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <!-- <t t-name="ConfirmPopup" owl="1">
-        <div role="dialog" class="modal-dialog">
-            <Draggable>
-                <div class="popup popup-confirm">
-                    <header class="title drag-handle">
-                        <t t-esc="props.title" />
-                    </header>
-                    <main class="body">
-                        <t t-esc=" props.body" />
-                    </main>
-                    <footer class="footer">
-                        <div class="button confirm" t-on-click="confirm">
-                            <t t-esc="props.confirmText" />
-                        </div>
-                        <div class="button cancel" t-on-click="cancel">
-                            <t t-esc="props.cancelText" />
-                        </div>
-                    </footer>
+    <t t-name="quemen.PedidoEspecialPopup">
+        <Dialog title="props.title" size="'md'">
+            <div class="d-flex flex-column gap-3">
+                <div>
+                    <label class="form-label fw-semibold">Fecha de entrega</label>
+                    <input class="form-control form-control-lg" type="date" t-model="state.fecha"/>
                 </div>
-            </Draggable>
-        </div>
-    </t> -->
-    <t t-name="PedidoEspecialPopup" owl="1">
-        <div role="dialog" class="modal-dialog">
-        <Draggable>
-            <div class="popup popup-confirm">
-                <header class="title drag-handle">
-                    <t t-esc="props.title" />
-                </header>
-                <div class="selection scrollable-y">
-                    <table id="CuotasTabla" style="width:100%">
-                      <tr>
-                        <td></td>
-                      </tr>
-                      <tr style="height:70px">
-                        <td></td>
-                        <td align="left">
-                          Fecha de entrega:
-                        </td>
-                        <td colspan="3" align="left">
-                          <input
-                            required="1"
-                            type="date"
-                            id="meeting-time"
-                            name="meeting-time"
-                            style="font-size:80%; width:90%;" onkeypress="return false;"/>
-
-                        </td>
-                        <td></td>
-                      </tr>
-                      <tr style="height:70px">
-                        <td></td>
-                        <td align="left">
-                          Hora de entrega:
-                        </td>
-                        <td colspan="3" align="left">
-                          <input
-                            required="1"
-                            type="time"
-                            id="field_time"
-                            name="field_time"
-                            style="font-size:80%; width:90%;"
-                            />
-
-                        </td>
-                        <td></td>
-                      </tr>
-                      <tr>
-                        <td></td>
-                      </tr>
-
-                      <tr rowspan="6" style="height:100px; Word-break:break-all;">
-                        <td></td>
-                        <td align="left">Observaciones: </td>
-                        <td align="left"><textarea id="observaciones_id" required="True" style="font-size:80%; width:90%; height:130px; Word-break:break-all;"></textarea></td>
-                        <td></td>
-                      </tr>
-
-                      <tr>
-                        <td></td>
-                      </tr>
-
-                      <tr style="height:70px;">
-                        <td></td>
-                        <td align="left">Sucursal de entrega: </td>
-                        <td align="left"><input id="entrega_id" style="font-size:80%; width:90%;"></input></td>
-                        <td></td>
-                      </tr>
-
-                      <tr style="height:70px;">
-                        <td></td>
-                        <td align="left">Autorizó: </td>
-                        <td align="left"><input required="required" id="autorizo_id" style="font-size:80%; width:90%;"></input></td>
-                        <td></td>
-                      </tr>
-                    </table>
+                <div>
+                    <label class="form-label fw-semibold">Hora de entrega</label>
+                    <input class="form-control form-control-lg" type="time" t-model="state.hora"/>
                 </div>
-                <footer class="footer">
-                    <div class="button confirm" t-on-click="confirm">
-                        <t t-esc="props.confirmText" />
-                    </div>
-                    <div class="button cancel" t-on-click="cancel">
-                        <t t-esc="props.cancelText" />
-                    </div>
-                </footer>
+                <div>
+                    <label class="form-label fw-semibold">Observaciones</label>
+                    <textarea class="form-control form-control-lg" rows="4" t-model="state.observaciones"/>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Sucursal de entrega</label>
+                    <input class="form-control form-control-lg" t-model="state.sucursal_entrega"/>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Autorizó</label>
+                    <input class="form-control form-control-lg" t-model="state.autorizo"/>
+                </div>
             </div>
-        </Draggable>
-        </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary btn-lg" t-att-disabled="!isValid" t-on-click="confirm">
+                    Confirmar
+                </button>
+                <button class="btn btn-secondary btn-lg" t-on-click="cancel">
+                    Cancelar
+                </button>
+            </t>
+        </Dialog>
     </t>
-
 </templates>

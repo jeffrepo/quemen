@@ -16,6 +16,22 @@ class PosOrder(models.Model):
     autorizo_especial = fields.Char("Autorizó")
     invalido = fields.Boolean('Invalido')
 
+    @api.model
+    def _load_pos_data_fields(self, config):
+        fields_to_load = super()._load_pos_data_fields(config)
+        if not fields_to_load:
+            return fields_to_load
+        custom_fields = [
+            'tipo_venta',
+            'pedido_especial',
+            'fecha_especial',
+            'hora_especial',
+            'observaciones_especial',
+            'sucursal_entrega',
+            'autorizo_especial',
+        ]
+        return fields_to_load + [field for field in custom_fields if field not in fields_to_load]
+
     def buscar_inventario(self, products_order, ubicacion_id):
         lote_no_existente = []
         productos_sin_existencia = []
@@ -48,16 +64,18 @@ class PosOrder(models.Model):
     @api.model
     def _order_fields(self, ui_order):
         res = super(PosOrder, self)._order_fields(ui_order)
-        session = self.env['pos.session'].search([('id', '=', res['session_id'])], limit=1)
 
-        if 'fecha' in ui_order:
-            mal_formato = ui_order['fecha']
-
-            res['hora_especial'] = ui_order['hora']
-            res['fecha_especial'] = ui_order['fecha']
-            res['observaciones_especial']= ui_order['observaciones']
-            res['sucursal_entrega'] = ui_order['sucursal_entrega']
-            res['autorizo_especial']=ui_order['autorizo']
+        fecha_especial = ui_order.get('fecha_especial') or ui_order.get('fecha')
+        if fecha_especial:
+            res['tipo_venta'] = 'especial'
+            res['pedido_especial'] = True
+            res['hora_especial'] = ui_order.get('hora_especial') or ui_order.get('hora') or False
+            res['fecha_especial'] = fecha_especial
+            res['observaciones_especial'] = (
+                ui_order.get('observaciones_especial') or ui_order.get('observaciones') or False
+            )
+            res['sucursal_entrega'] = ui_order.get('sucursal_entrega') or False
+            res['autorizo_especial'] = ui_order.get('autorizo_especial') or ui_order.get('autorizo') or False
 
         return res
 
