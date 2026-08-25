@@ -217,9 +217,63 @@ class QuemenOpLote(models.Model):
                         if lot_id:
                             line.write({'lot_barcode_id': lot_id})
 
+    def _explode_bom_leaf_components(self, bom, product, factor, bom_path=None):
+        """Return the leaf components for ``factor`` executions of ``bom``.
+
+        Contrary to ``mrp.bom.explode``, this flow must expand both phantom and
+        normal child BoMs because the outgoing transfer is for raw supplies,
+        not for the intermediate manufactured components.
+        """
+        bom_path = bom_path or ()
+        if bom.id in bom_path:
+            raise ValidationError(_(
+                'No se puede explotar la lista de materiales de %s porque contiene un ciclo.'
+            ) % product.display_name)
+
+        bom_path += (bom.id,)
+        bom_model = self.env['mrp.bom']
+        leaf_components = []
+
+        for bom_line in bom.bom_line_ids:
+            if bom_line._skip_bom_line(product):
+                continue
+
+            line_quantity = bom_line.product_qty * factor
+            component = bom_line.product_id
+            child_bom = bom_model._bom_find(
+                component,
+                company_id=self.env.company.id,
+            )[component]
+
+            if child_bom:
+                if not child_bom.product_qty:
+                    raise ValidationError(_(
+                        'La lista de materiales de %s debe producir una cantidad mayor que cero.'
+                    ) % component.display_name)
+
+                child_quantity = bom_line.product_uom_id._compute_quantity(
+                    line_quantity,
+                    child_bom.product_uom_id,
+                )
+                child_factor = child_quantity / child_bom.product_qty
+                leaf_components.extend(self._explode_bom_leaf_components(
+                    child_bom,
+                    component,
+                    child_factor,
+                    bom_path,
+                ))
+                continue
+
+            quantity = bom_line.product_uom_id._compute_quantity(
+                line_quantity,
+                component.uom_id,
+            )
+            leaf_components.append((component, quantity))
+
+        return leaf_components
+
     def confirm_out(self):
         for lot in self:
-            error_msg = ''
             if lot.product_ids:
                 tipo_operacion_id = self.env['stock.picking.type'].search([("name","=","Transitoria fabricacion")])
                 ubicacion_origen_id =  tipo_operacion_id.default_location_src_id.id
@@ -236,25 +290,28 @@ class QuemenOpLote(models.Model):
                 envio_id = self.env['stock.picking'].create(envio)
 
                 for line in lot.product_ids:
-                    qty_bom = line.product_id.bom_ids[0].product_qty
-                    if line.product_id.bom_ids and line.product_id.bom_ids.bom_line_ids:
-                        for mrp_line in line.product_id.bom_ids[0].bom_line_ids:
+                    bom = self.env['mrp.bom']._bom_find(
+                        line.product_id,
+                        company_id=self.env.company.id,
+                    )[line.product_id]
+                    if not bom:
+                        continue
 
-                            move = {
-                                'product_id': mrp_line.product_id.id,
-                                'name': mrp_line.product_id.name,
-                                'product_uom': mrp_line.product_id.uom_id.id,
-                                'location_id': ubicacion_origen_id,
-                                'product_uom_qty': mrp_line.product_qty * line.quantity,
-                                'location_dest_id': ubicacion_destino_id,
-                                # 'lot_id': quant.lot_id.id,
-                                'picking_id': envio_id.id
-                            }
-                            move_id = self.env['stock.move'].create(move)
-                            move['move_id'] = move_id.id
-                            move['product_uom_qty'] = mrp_line.product_qty * line.quantity
-                            #move['product_uom_qty'] = quant.quantity
-                   # move['lot_id'] = quant.lot_id.id
+                    components = self._explode_bom_leaf_components(
+                        bom,
+                        line.product_id,
+                        line.quantity,
+                    )
+                    for component, quantity in components:
+                        self.env['stock.move'].create({
+                            'product_id': component.id,
+                            'name': component.name,
+                            'product_uom': component.uom_id.id,
+                            'location_id': ubicacion_origen_id,
+                            'product_uom_qty': quantity,
+                            'location_dest_id': ubicacion_destino_id,
+                            'picking_id': envio_id.id,
+                        })
 
                 lot.despacho_id = envio_id.id
             lot.write({'state': "despachado"})
