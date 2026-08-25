@@ -1,28 +1,159 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-
-        <record id="quemen_mrp_production_tree_view" model="ir.ui.view">
-            <field name="name">quemen.mrp.production.tree</field>
+        <record id="quemen_mrp_production_kanban_view" model="ir.ui.view">
+            <field name="name">quemen.mrp.production.kanban</field>
             <field name="model">mrp.production</field>
-            <field name="inherit_id" ref="mrp.mrp_production_tree_view"/>
             <field name="arch" type="xml">
-                <field name="origin" position="before">
-                    <field name="lot_id"/>
-                </field>
+                <kanban string="Órdenes de producción por etapa"
+                        default_group_by="x_studio_etapa"
+                        default_order="date_planned_start asc"
+                        class="o_kanban_small_column o_quemen_mrp_production_kanban"
+                        create="false"
+                        quick_create="false"
+                        group_create="false"
+                        group_delete="false"
+                        group_edit="false"
+                        records_draggable="true">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="product_qty"/>
+                    <field name="product_uom_id"/>
+                    <field name="date_planned_start"/>
+                    <field name="origin"/>
+                    <field name="state"/>
+                    <field name="x_studio_etapa"/>
+                    <field name="company_id"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_global_click o_quemen_mrp_production_card">
+                                <div class="o_quemen_mrp_card_header">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                    <span t-attf-class="badge #{record.state.raw_value === 'to_close' ? 'badge-success' : 'badge-secondary'}">
+                                        <field name="state"/>
+                                    </span>
+                                </div>
+
+                                <div class="o_quemen_mrp_product">
+                                    <field name="product_id"/>
+                                </div>
+
+                                <div class="o_quemen_mrp_meta text-muted">
+                                    <div t-if="record.date_planned_start.raw_value">
+                                        <i class="fa fa-calendar mr-1" title="Fecha programada"/>
+                                        <field name="date_planned_start"/>
+                                    </div>
+                                    <div t-if="record.origin.raw_value">
+                                        <i class="fa fa-link mr-1" title="Origen"/>
+                                        <field name="origin"/>
+                                    </div>
+                                    <div>
+                                        <i class="fa fa-building-o mr-1" title="Empresa"/>
+                                        <field name="company_id"/>
+                                    </div>
+                                </div>
+
+                                <label class="o_quemen_mrp_qty_label">Cantidad a producir</label>
+                                <div class="input-group input-group-sm o_quemen_mrp_qty_group">
+                                    <input type="number"
+                                           min="0"
+                                           step="any"
+                                           class="form-control o_quemen_mrp_qty_input"
+                                           t-att-value="record.product_qty.raw_value"
+                                           title="Edite la cantidad y pulse guardar o confirmar y cerrar"/>
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">
+                                            <field name="product_uom_id"/>
+                                        </span>
+                                        <button type="button"
+                                                class="btn btn-outline-secondary o_quemen_mrp_qty_save"
+                                                title="Guardar cantidad">
+                                            <i class="fa fa-save"/>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button type="button"
+                                        class="btn btn-primary btn-sm btn-block o_quemen_mrp_confirm_close">
+                                    <i class="fa fa-check mr-1"/>
+                                    Confirmar y cerrar
+                                </button>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
             </field>
         </record>
 
-        <record id="quemen_mrp_production_form_view" model="ir.ui.view">
-            <field name="name">quemen.mrp.production.form</field>
+        <record id="quemen_mrp_production_search_view" model="ir.ui.view">
+            <field name="name">quemen.mrp.production.search</field>
             <field name="model">mrp.production</field>
-            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
             <field name="arch" type="xml">
-                <field name="user_id" position="after">
-                    <field name="lot_id"/>
-                </field>
+                <search string="Buscar órdenes de producción">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="origin"/>
+                    <field name="x_studio_etapa"/>
+                    <filter name="active_orders"
+                            string="Órdenes activas"
+                            domain="[('state', 'not in', ('done', 'cancel'))]"/>
+                    <group expand="0" string="Agrupar por">
+                        <filter name="group_by_stage"
+                                string="Etapa"
+                                context="{'group_by': 'x_studio_etapa'}"/>
+                        <filter name="group_by_product"
+                                string="Producto"
+                                context="{'group_by': 'product_id'}"/>
+                        <filter name="group_by_state"
+                                string="Estado"
+                                context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
             </field>
         </record>
 
+        <record id="action_quemen_mrp_production_by_stage" model="ir.actions.act_window">
+            <field name="name">Órdenes por etapa</field>
+            <field name="res_model">mrp.production</field>
+            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_id" ref="quemen_mrp_production_kanban_view"/>
+            <field name="search_view_id" ref="quemen_mrp_production_search_view"/>
+            <field name="domain">[('state', 'not in', ('done', 'cancel')), ('picking_type_id.active', '=', True)]</field>
+            <field name="context">{'group_by': 'x_studio_etapa'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No hay órdenes de producción activas.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_quemen_mrp_production_by_stage_kanban" model="ir.actions.act_window.view">
+            <field name="sequence" eval="1"/>
+            <field name="view_mode">kanban</field>
+            <field name="view_id" ref="quemen_mrp_production_kanban_view"/>
+            <field name="act_window_id" ref="action_quemen_mrp_production_by_stage"/>
+        </record>
+
+        <record id="action_quemen_mrp_production_by_stage_tree" model="ir.actions.act_window.view">
+            <field name="sequence" eval="2"/>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="mrp.mrp_production_tree_view"/>
+            <field name="act_window_id" ref="action_quemen_mrp_production_by_stage"/>
+        </record>
+
+        <record id="action_quemen_mrp_production_by_stage_form" model="ir.actions.act_window.view">
+            <field name="sequence" eval="3"/>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="mrp.mrp_production_form_view"/>
+            <field name="act_window_id" ref="action_quemen_mrp_production_by_stage"/>
+        </record>
+
+        <menuitem id="menu_quemen_mrp_production_by_stage"
+                  name="Órdenes por etapa"
+                  action="action_quemen_mrp_production_by_stage"
+                  parent="mrp.menu_mrp_manufacturing"
+                  sequence="2"/>
     </data>
 </odoo>

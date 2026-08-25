@@ -21,7 +21,7 @@
         'data/planificacion_productos_vencidos.xml',
         'data/cfdi.xml',
         # 'security/ir.model.access.csv',
-        # 'views/mrp_production_views.xml',
+        'views/mrp_production_views.xml',
         'data/ir_sequence_data.xml',
         'data/cron_jobs.xml',
         'views/stock_production_lot_views.xml',
@@ -105,6 +105,8 @@
         ],
         'web.assets_backend': [
             'quemen/static/src/css/navbar.scss',
+            'quemen/static/src/css/mrp_production_kanban.scss',
+            'quemen/static/src/js/mrp_production_kanban.js',
         ],        
         # 'web.assets_qweb':[
         #     'pos_ticket_mx/static/src/xml/**/*',

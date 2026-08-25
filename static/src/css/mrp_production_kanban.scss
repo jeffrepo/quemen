@@ -1,0 +1,39 @@
+.o_quemen_mrp_production_kanban {
+    .o_quemen_mrp_production_card {
+        display: flex;
+        min-height: 220px;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .o_quemen_mrp_card_header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .o_quemen_mrp_product {
+        min-height: 2.5rem;
+        font-weight: 600;
+    }
+
+    .o_quemen_mrp_meta {
+        flex: 1 1 auto;
+        font-size: 0.85rem;
+    }
+
+    .o_quemen_mrp_qty_label {
+        margin: 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .o_quemen_mrp_qty_input {
+        min-width: 0;
+    }
+
+    .o_quemen_mrp_confirm_close {
+        margin-top: 0.15rem;
+    }
+}

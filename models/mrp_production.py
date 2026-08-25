@@ -23,7 +23,90 @@ class MrpProduction(models.Model):
     """ Manufacturing Orders """
     _inherit = 'mrp.production'
 
+    x_studio_etapa = fields.Integer(
+        string='Etapa',
+        index=True,
+        group_expand='_read_group_x_studio_etapa',
+    )
+
     # lot_id = fields.Many2one('quemen.op_lote','Lote')
+
+    @api.model
+    def _read_group_x_studio_etapa(self, stages, domain, order):
+        """Keep the usual stages visible even when a column has no orders."""
+        return sorted(set(stages or []) | set(range(5)))
+
+    def action_update_product_qty(self, product_qty):
+        """Safely change an MO quantity from the Quemen kanban view."""
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            raise UserError(_('No puede cambiar la cantidad de una orden cerrada o cancelada.'))
+
+        try:
+            product_qty = float(product_qty)
+        except (TypeError, ValueError):
+            raise UserError(_('Ingrese una cantidad válida.'))
+
+        rounding = self.product_uom_id.rounding
+        if not math.isfinite(product_qty) or float_compare(
+                product_qty, 0.0, precision_rounding=rounding) <= 0:
+            raise UserError(_('La cantidad a producir debe ser mayor que cero.'))
+        if float_compare(
+                product_qty, self.qty_produced, precision_rounding=rounding) < 0:
+            raise UserError(_(
+                'La cantidad a producir no puede ser menor que la cantidad ya producida.'
+            ))
+
+        if float_compare(
+                product_qty, self.product_qty, precision_rounding=rounding) == 0:
+            return True
+        if float_compare(
+                self.product_qty, self.qty_produced, precision_rounding=rounding) <= 0:
+            raise UserError(_(
+                'No puede cambiar la cantidad desde esta vista porque la orden ya fue '
+                'producida completamente.'
+            ))
+
+        self.env['change.production.qty'].create({
+            'mo_id': self.id,
+            'product_qty': product_qty,
+        }).change_prod_qty()
+        return True
+
+    def action_confirm_and_close(self, product_qty=None):
+        """Apply the card quantity, confirm the MO and close it in one step."""
+        self.ensure_one()
+        if self.state == 'cancel':
+            raise UserError(_('No puede confirmar una orden de producción cancelada.'))
+        if self.state == 'done':
+            return True
+
+        if product_qty is not None:
+            self.action_update_product_qty(product_qty)
+
+        if self.state == 'draft':
+            self.action_confirm()
+
+        remaining_qty = self.product_qty - self.qty_produced
+        if self.product_tracking == 'serial' and float_compare(
+                remaining_qty, 1.0,
+                precision_rounding=self.product_uom_id.rounding) > 0:
+            raise UserError(_(
+                'Las órdenes con seguimiento por número de serie y cantidad mayor que uno '
+                'deben cerrarse desde el formulario estándar.'
+            ))
+        if self.product_tracking in ('lot', 'serial') and not self.lot_producing_id:
+            raise UserError(_(
+                'Debe asignar un lote o número de serie al producto terminado antes de cerrar la orden.'
+            ))
+
+        self.qty_producing = self.product_qty
+        self._set_qty_producing()
+        return self.with_context(
+            skip_immediate=True,
+            skip_consumption=True,
+            skip_backorder=True,
+        ).button_mark_done()
 
     @api.onchange('bom_id', 'product_id', 'product_qty', 'product_uom_id', 'move_raw_ids')
     def _onchange_move_raw(self):
