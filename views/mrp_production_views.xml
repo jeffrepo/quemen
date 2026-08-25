@@ -55,7 +55,7 @@
                                     </div>
                                 </div>
 
-                                <label class="o_quemen_mrp_qty_label">Cantidad a producir</label>
+                                <span class="o_form_label o_quemen_mrp_qty_label">Cantidad a producir</span>
                                 <div class="input-group input-group-sm o_quemen_mrp_qty_group">
                                     <input type="number"
                                            min="0"
