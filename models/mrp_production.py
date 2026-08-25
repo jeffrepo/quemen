@@ -37,7 +37,7 @@ class MrpProduction(models.Model):
         return sorted(set(stages or []) | set(range(5)))
 
     def action_update_product_qty(self, product_qty):
-        """Safely change an MO quantity from the Quemen kanban view."""
+        """Change the MO quantity without changing its existing components."""
         self.ensure_one()
         if self.state in ('done', 'cancel'):
             raise UserError(_('No puede cambiar la cantidad de una orden cerrada o cancelada.'))
@@ -67,10 +67,52 @@ class MrpProduction(models.Model):
                 'producida completamente.'
             ))
 
-        self.env['change.production.qty'].create({
+        quantity_wizard = self.env['change.production.qty'].create({
             'mo_id': self.id,
             'product_qty': product_qty,
-        }).change_prod_qty()
+        })
+
+        old_product_qty = self.product_qty
+        done_moves = self.move_finished_ids.filtered(
+            lambda move: move.state == 'done' and move.product_id == self.product_id
+        )
+        qty_produced = self.product_id.uom_id._compute_quantity(
+            sum(done_moves.mapped('product_qty')),
+            self.product_uom_id,
+        )
+
+        # Update finished products and by-products as Odoo's standard quantity
+        # wizard does, but deliberately leave raw moves untouched. Their
+        # ``unit_factor`` is recomputed from the new remaining production
+        # quantity, so closing the MO consumes the component demand that was
+        # already planned instead of scaling it with ``product_qty``.
+        finished_moves_modification = quantity_wizard._update_finished_moves(
+            self,
+            product_qty - qty_produced,
+            old_product_qty - qty_produced,
+        )
+        if finished_moves_modification:
+            self._log_downside_manufactured_quantity(finished_moves_modification)
+
+        self.write({'product_qty': product_qty})
+        for workorder in self.workorder_ids:
+            workorder.duration_expected = workorder._get_duration_expected(
+                ratio=product_qty / old_product_qty
+            )
+            quantity = workorder.qty_production - workorder.qty_produced
+            if self.product_tracking == 'serial':
+                quantity = 1.0 if not float_is_zero(
+                    quantity, precision_rounding=rounding) else 0.0
+            else:
+                quantity = quantity if quantity > 0 and not float_is_zero(
+                    quantity, precision_rounding=rounding) else 0.0
+            workorder._update_qty_producing(quantity)
+            if workorder.qty_produced < workorder.qty_production and workorder.state == 'done':
+                workorder.state = 'progress'
+            if workorder.qty_produced == workorder.qty_production and workorder.state == 'progress':
+                workorder.state = 'done'
+                if workorder.next_work_order_id.state == 'pending':
+                    workorder.next_work_order_id.state = 'ready'
         return True
 
     def action_confirm_and_close(self, product_qty=None):
