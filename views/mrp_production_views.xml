@@ -6,7 +6,7 @@
             <field name="model">mrp.production</field>
             <field name="arch" type="xml">
                 <kanban string="Órdenes de producción por etapa"
-                        default_group_by="x_studio_etapa"
+                        default_group_by="quemen_etapa_kanban"
                         default_order="date_planned_start asc"
                         class="o_kanban_small_column o_quemen_mrp_production_kanban"
                         create="false"
@@ -23,6 +23,7 @@
                     <field name="origin"/>
                     <field name="state"/>
                     <field name="x_studio_etapa"/>
+                    <field name="quemen_etapa_kanban"/>
                     <field name="company_id"/>
                     <templates>
                         <t t-name="kanban-box">
@@ -104,7 +105,7 @@
                     <group expand="0" string="Agrupar por">
                         <filter name="group_by_stage"
                                 string="Etapa"
-                                context="{'group_by': 'x_studio_etapa'}"/>
+                                context="{'group_by': 'quemen_etapa_kanban'}"/>
                         <filter name="group_by_product"
                                 string="Producto"
                                 context="{'group_by': 'product_id'}"/>
@@ -123,7 +124,7 @@
             <field name="view_id" ref="quemen_mrp_production_kanban_view"/>
             <field name="search_view_id" ref="quemen_mrp_production_search_view"/>
             <field name="domain">[('state', 'not in', ('done', 'cancel')), ('picking_type_id.active', '=', True)]</field>
-            <field name="context">{'group_by': 'x_studio_etapa'}</field>
+            <field name="context">{'group_by': 'quemen_etapa_kanban'}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     No hay órdenes de producción activas.

@@ -25,16 +25,45 @@ class MrpProduction(models.Model):
 
     x_studio_etapa = fields.Integer(
         string='Etapa',
+        default=0,
         index=True,
-        group_expand='_read_group_x_studio_etapa',
+    )
+    quemen_etapa_kanban = fields.Char(
+        string='Etapa',
+        compute='_compute_quemen_etapa_kanban',
+        inverse='_inverse_quemen_etapa_kanban',
+        store=True,
+        index=True,
+        group_expand='_read_group_quemen_etapa_kanban',
     )
 
     # lot_id = fields.Many2one('quemen.op_lote','Lote')
 
+    @api.depends('x_studio_etapa')
+    def _compute_quemen_etapa_kanban(self):
+        for production in self:
+            production.quemen_etapa_kanban = str(production.x_studio_etapa or 0)
+
+    def _inverse_quemen_etapa_kanban(self):
+        for production in self:
+            try:
+                production.x_studio_etapa = int(production.quemen_etapa_kanban or 0)
+            except (TypeError, ValueError):
+                raise UserError(_('La etapa debe ser un número entero.'))
+
     @api.model
-    def _read_group_x_studio_etapa(self, stages, domain, order):
-        """Keep the usual stages visible even when a column has no orders."""
-        return sorted(set(stages or []) | set(range(5)))
+    def _read_group_quemen_etapa_kanban(self, stages, domain, order):
+        """Expose numeric stages as text so that zero is not rendered as false."""
+        stage_values = {str(stage) for stage in stages if stage not in (False, None, '')}
+        stage_values.update(str(stage) for stage in range(5))
+
+        def stage_sort_key(value):
+            try:
+                return 0, int(value)
+            except (TypeError, ValueError):
+                return 1, value
+
+        return sorted(stage_values, key=stage_sort_key)
 
     def action_update_product_qty(self, product_qty):
         """Change the MO quantity without changing its existing components."""
