@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <function model="mrp.production" name="sync_open_stages_from_bom"/>
+
         <record id="quemen_mrp_production_kanban_view" model="ir.ui.view">
             <field name="name">quemen.mrp.production.kanban</field>
             <field name="model">mrp.production</field>

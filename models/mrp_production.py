@@ -65,6 +65,90 @@ class MrpProduction(models.Model):
 
         return sorted(stage_values, key=stage_sort_key)
 
+    @api.model
+    def _get_used_in_stage_by_product(self, products, company):
+        """Return the highest active BoM-line stage for each product."""
+        products = products.exists()
+        stages = {product.id: 0 for product in products}
+        if not products:
+            return stages
+
+        bom_lines = self.env['mrp.bom.line'].search([
+            ('product_id', 'in', products.ids),
+            ('bom_id.active', '=', True),
+            ('bom_id.company_id', 'in', [False, company.id]),
+        ])
+        for bom_line in bom_lines:
+            stages[bom_line.product_id.id] = max(
+                stages[bom_line.product_id.id],
+                bom_line.stage,
+            )
+        return stages
+
+    def _set_stage_from_used_in(self, only_default=False):
+        """Synchronize MO stages without overwriting an explicitly set stage."""
+        productions = self.filtered(
+            lambda production: production.state not in ('done', 'cancel')
+            and (not only_default or not production.x_studio_etapa)
+        )
+        for company in productions.mapped('company_id'):
+            company_productions = productions.filtered(
+                lambda production: production.company_id == company
+            )
+            stages = self._get_used_in_stage_by_product(
+                company_productions.mapped('product_id'),
+                company,
+            )
+            productions_by_stage = defaultdict(lambda: self.env['mrp.production'])
+            for production in company_productions:
+                stage = stages.get(production.product_id.id, 0)
+                if production.x_studio_etapa != stage:
+                    productions_by_stage[stage] |= production
+            for stage, stage_productions in productions_by_stage.items():
+                stage_productions.with_context(
+                    quemen_skip_stage_sync=True,
+                ).write({'x_studio_etapa': stage})
+        return True
+
+    @api.model
+    def sync_open_stages_from_bom(self):
+        """Correct open orders still at the default stage during module update."""
+        productions = self.search([
+            ('state', 'not in', ('done', 'cancel')),
+            ('x_studio_etapa', '=', 0),
+        ])
+        return productions._set_stage_from_used_in(only_default=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        vals_list = [dict(vals) for vals in vals_list]
+        vals_by_company = defaultdict(list)
+        for vals in vals_list:
+            if vals.get('product_id') and 'x_studio_etapa' not in vals:
+                company_id = vals.get('company_id') or self.env.company.id
+                vals_by_company[company_id].append(vals)
+
+        for company_id, company_vals in vals_by_company.items():
+            products = self.env['product.product'].browse(
+                [vals['product_id'] for vals in company_vals]
+            )
+            stages = self._get_used_in_stage_by_product(
+                products,
+                self.env['res.company'].browse(company_id),
+            )
+            for vals in company_vals:
+                vals['x_studio_etapa'] = stages.get(vals['product_id'], 0)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        result = super().write(vals)
+        if (
+                'product_id' in vals
+                and 'x_studio_etapa' not in vals
+                and not self.env.context.get('quemen_skip_stage_sync')):
+            self._set_stage_from_used_in()
+        return result
+
     def action_update_product_qty(self, product_qty):
         """Change the MO quantity without changing its existing components."""
         self.ensure_one()
