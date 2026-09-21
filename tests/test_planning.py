@@ -40,7 +40,9 @@ class TestPlanning(TransactionCase):
 
     def _lots(self, planning):
         return self.env['quemen.op_lote'].search([
+            '|',
             ('reference', '=', planning.name),
+            ('reference', '=like', planning.name + ' / %'),
         ])
 
     def _contents(self, lots):
@@ -91,6 +93,9 @@ class TestPlanning(TransactionCase):
             [(self.product_a.id, 2), (self.product_a2.id, 3)],
             [(self.product_b.id, 4)],
         ]))
+        self.assertEqual(set(self._lots(planning).mapped('reference')), {
+            planning.name + ' / A', planning.name + ' / B',
+        })
 
     def test_explicit_line_area_takes_precedence(self):
         planning = self._planning([
@@ -103,6 +108,7 @@ class TestPlanning(TransactionCase):
         self.assertEqual(self._contents(self._lots(planning)), [
             [(self.product_a.id, 2), (self.product_b.id, 3)],
         ])
+        self.assertEqual(self._lots(planning).reference, planning.name + ' / Manual')
 
     def test_all_populated_columns_in_one_line_are_included(self):
         planning = self._planning([{

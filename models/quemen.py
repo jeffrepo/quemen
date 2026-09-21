@@ -538,11 +538,11 @@ class QuemenPlanning(models.Model):
                         'quantity': line.qty,
                     }))
 
-            for product_lines in grouped_lines.values():
+            for (product_field, area), product_lines in grouped_lines.items():
                 self.env['quemen.op_lote'].create({
                     'date': p.date,
                     'date_mrp_production': p.planning_date,
-                    'reference': p.name,
+                    'reference': '%s / %s' % (p.name, area) if area else p.name,
                     'product_ids': product_lines,
                 })
             p.write({'state': "confirmado"})
