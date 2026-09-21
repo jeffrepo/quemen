@@ -427,7 +427,11 @@ class QuemenPlanning(models.Model):
                 product_id = lc['product_id']
 
                 if product_id.bom_ids and product_id.bom_ids.bom_line_ids:
-                    group_product_components.append((0,0,{'product_id': product_id.id,'qty': lc['qty'] }) )
+                    group_product_components.append((0, 0, {
+                        'product_id': product_id.id,
+                        'qty': lc['qty'],
+                        'area': product_id.bom_ids.area,
+                    }))
                     # lc['line'].unlink()
                     for component in product_id.bom_ids.bom_line_ids:
                         qty_production = (product_id.bom_ids.product_qty*component.product_qty) * lc['qty']
@@ -453,7 +457,7 @@ class QuemenPlanning(models.Model):
                                     'qty_production': qty1_production,
                                     'qty_stock': qty1_stock,
                                     #'qty': qty1,
-                                    'area': component.product_id.bom_ids.area,
+                                    'area': component1.product_id.bom_ids.area,
                                 }))
 
                                 #Receta 3 de (sub 3)
@@ -468,7 +472,7 @@ class QuemenPlanning(models.Model):
                                             'qty_production': qty2_production,
                                             'qty_stock': qty2_stock,
                                             #'qty': qty2,
-                                            'area': component.product_id.bom_ids.area,
+                                            'area': component2.product_id.bom_ids.area,
                                         }))
 
                                         #Receta 4 de (sub 4)
@@ -483,7 +487,7 @@ class QuemenPlanning(models.Model):
                                                     'qty_production': qty3_production,
                                                     'qty_stock': qty3_stock,
                                                     #'qty': qty3,
-                                                    'area': component.product_id.bom_ids.area,
+                                                    'area': component3.product_id.bom_ids.area,
                                                 }))
                                                 #Receta 5 de (sub 5)
                                                 if component3.product_id.bom_ids and component3.product_id.bom_ids.bom_line_ids:
@@ -497,34 +501,50 @@ class QuemenPlanning(models.Model):
                                                             'qty_production': qty4_production,
                                                             'qty_stock': qty4_stock,
                                                             #'qty': qty4,
-                                                            'area': component.product_id.bom_ids.area,
+                                                            'area': component4.product_id.bom_ids.area,
                                                         }))
 
                 self.write({'product_ids': group_product_components})
         return True
 
     def confirm_planning(self):
+        product_fields = (
+            'product_id', 'subproduct_id', 'subproduct1_id',
+            'subproduct2_id', 'subproduct3_id', 'subproduct4_id',
+        )
         for p in self:
-            if p.product_ids:
-                group_product_components = []
-                dic_components = {}
-                for line in p.product_ids:
-                    if line.subproduct_id:
-                        if line.area not in dic_components:
-                            dic_components[line.area] = []
+            if p.state != 'borrador':
+                continue
 
-                        dic_components[line.area].append((0,0, {
-                            'product_id': line.subproduct_id.id,
-                            'quantity': line.qty,
-                        }))
+            products = self.env['product.product']
+            for product_field in product_fields:
+                products |= p.product_ids.mapped(product_field)
+            boms = self.env['mrp.bom']._bom_find(
+                products, company_id=self.env.company.id,
+            )
 
-                if len(dic_components) > 0:
-                    for component in dic_components:
-                        op_lot_id = self.env['quemen.op_lote'].create({
-                            'date': p.date,
-                            'date_mrp_production': p.planning_date,
-                            'reference': p.name,
-                            'product_ids': dic_components[component]})
+            grouped_lines = {}
+            for line in p.product_ids:
+                for product_field in product_fields:
+                    product = line[product_field]
+                    if not product or not boms[product]:
+                        continue
+
+                    # Keep columns separate even when they share the same area.
+                    area = line.area or boms[product].area or False
+                    group_key = (product_field, area)
+                    grouped_lines.setdefault(group_key, []).append((0, 0, {
+                        'product_id': product.id,
+                        'quantity': line.qty,
+                    }))
+
+            for product_lines in grouped_lines.values():
+                self.env['quemen.op_lote'].create({
+                    'date': p.date,
+                    'date_mrp_production': p.planning_date,
+                    'reference': p.name,
+                    'product_ids': product_lines,
+                })
             p.write({'state': "confirmado"})
         return True
 
